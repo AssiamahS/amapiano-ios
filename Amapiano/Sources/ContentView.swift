@@ -326,6 +326,7 @@ struct CoverFlowView: View {
 struct GridCard: View {
     let track: Track
     @EnvironmentObject var player: PlayerViewModel
+    @State private var showEditSheet = false
 
     var isCurrent: Bool { player.currentTrack?.id == track.id }
 
@@ -362,6 +363,10 @@ struct GridCard: View {
                 .font(.system(size: 10))
                 .foregroundStyle(.secondary)
                 .lineLimit(1)
+        }
+        .onLongPressGesture { showEditSheet = true }
+        .sheet(isPresented: $showEditSheet) {
+            TrackEditSheet(track: track)
         }
     }
 
@@ -457,6 +462,7 @@ struct TrackRow: View {
         .padding(.vertical, 8)
         .background(isCurrent ? Color.accentOrange.opacity(0.08) : .clear)
         .contentShape(Rectangle())
+        .onLongPressGesture { showEditSheet = true }
         .sheet(isPresented: $showEditSheet) {
             TrackEditSheet(track: track)
         }
