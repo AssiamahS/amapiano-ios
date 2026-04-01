@@ -65,6 +65,15 @@ class APIClient {
         _ = try await URLSession.shared.data(for: req)
     }
 
+    func addTrackToPlaylist(playlistId: String, trackId: String) async throws {
+        guard let url = url("/api/playlists/\(playlistId)") else { return }
+        var req = URLRequest(url: url)
+        req.httpMethod = "PATCH"
+        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        req.httpBody = try JSONEncoder().encode(["add_track": trackId])
+        _ = try await URLSession.shared.data(for: req)
+    }
+
     func spotifyGenreLookup(title: String, artist: String) async throws -> String? {
         guard let url = url("/api/spotify-genre") else { return nil }
         var req = URLRequest(url: url)
@@ -74,6 +83,67 @@ class APIClient {
         let (data, _) = try await URLSession.shared.data(for: req)
         let result = try JSONDecoder().decode([String: String?].self, from: data)
         return result["genre"] ?? nil
+    }
+
+    func createPlaylist(name: String, trackIds: [String] = []) async throws -> String {
+        guard let url = url("/api/playlists") else { return "" }
+        var req = URLRequest(url: url)
+        req.httpMethod = "POST"
+        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        let body: [String: Any] = ["name": name, "track_ids": trackIds]
+        req.httpBody = try JSONSerialization.data(withJSONObject: body)
+        let (data, _) = try await URLSession.shared.data(for: req)
+        if let result = try JSONSerialization.jsonObject(with: data) as? [String: Any] {
+            return result["id"] as? String ?? ""
+        }
+        return ""
+    }
+
+    func deletePlaylist(id: String) async throws {
+        guard let url = url("/api/playlists/\(id)") else { return }
+        var req = URLRequest(url: url)
+        req.httpMethod = "DELETE"
+        _ = try await URLSession.shared.data(for: req)
+    }
+
+    func exportToSerato(playlistId: String) async throws -> String {
+        guard let url = url("/api/serato/export") else { return "" }
+        var req = URLRequest(url: url)
+        req.httpMethod = "POST"
+        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        req.httpBody = try JSONEncoder().encode(["playlist_id": playlistId])
+        let (data, _) = try await URLSession.shared.data(for: req)
+        if let result = try JSONSerialization.jsonObject(with: data) as? [String: Any] {
+            return result["path"] as? String ?? ""
+        }
+        return ""
+    }
+
+    struct SeratoCrate: Codable, Identifiable {
+        var id: String { name }
+        let name: String
+        let path: String
+        let count: Int
+        let source: String
+    }
+
+    struct SeratoCratesResponse: Codable {
+        let crates: [SeratoCrate]
+    }
+
+    func fetchSeratoCrates() async throws -> [SeratoCrate] {
+        guard let url = url("/api/serato/crates") else { return [] }
+        let (data, _) = try await URLSession.shared.data(from: url)
+        return try JSONDecoder().decode(SeratoCratesResponse.self, from: data).crates
+    }
+
+    func importSeratoCrate(path: String, name: String) async throws {
+        guard let url = url("/api/serato/crates/import") else { return }
+        var req = URLRequest(url: url)
+        req.httpMethod = "POST"
+        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        req.httpBody = try JSONEncoder().encode(["path": path, "name": name])
+        _ = try await URLSession.shared.data(for: req)
     }
 
     func testConnection(url: String) async -> Bool {

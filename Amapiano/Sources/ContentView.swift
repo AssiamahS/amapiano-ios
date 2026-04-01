@@ -364,7 +364,11 @@ struct GridCard: View {
                 .foregroundStyle(.secondary)
                 .lineLimit(1)
         }
-        .onLongPressGesture { showEditSheet = true }
+        .contextMenu {
+            Button { showEditSheet = true } label: {
+                Label("Edit Track", systemImage: "pencil")
+            }
+        }
         .sheet(isPresented: $showEditSheet) {
             TrackEditSheet(track: track)
         }
@@ -443,7 +447,7 @@ struct TrackRow: View {
             Spacer()
 
             // Duration + more button
-            VStack(alignment: .trailing, spacing: 4) {
+            VStack(alignment: .trailing, spacing: 2) {
                 Text(formatTime(track.duration))
                     .font(.system(size: 12, design: .monospaced))
                     .foregroundStyle(.tertiary)
@@ -452,9 +456,10 @@ struct TrackRow: View {
                     showEditSheet = true
                 } label: {
                     Image(systemName: "ellipsis")
-                        .font(.system(size: 14))
-                        .foregroundStyle(.tertiary)
-                        .frame(width: 28, height: 20)
+                        .font(.system(size: 16, weight: .bold))
+                        .foregroundStyle(.secondary)
+                        .frame(width: 40, height: 28)
+                        .contentShape(Rectangle())
                 }
             }
         }
@@ -462,7 +467,11 @@ struct TrackRow: View {
         .padding(.vertical, 8)
         .background(isCurrent ? Color.accentOrange.opacity(0.08) : .clear)
         .contentShape(Rectangle())
-        .onLongPressGesture { showEditSheet = true }
+        .contextMenu {
+            Button { showEditSheet = true } label: {
+                Label("Edit Track", systemImage: "pencil")
+            }
+        }
         .sheet(isPresented: $showEditSheet) {
             TrackEditSheet(track: track)
         }
@@ -486,6 +495,7 @@ struct TrackEditSheet: View {
     @State private var title: String
     @State private var artist: String
     @State private var saving = false
+    @State private var addedToPlaylist: String?
 
     init(track: Track) {
         self.track = track
@@ -538,8 +548,37 @@ struct TrackEditSheet: View {
                 }
 
                 Section("Actions") {
-                    Button("Add to Playlist...") {
-                        // Future: playlist picker
+                    if player.playlists.isEmpty {
+                        Text("No playlists yet")
+                            .foregroundStyle(.tertiary)
+                    } else {
+                        ForEach(player.playlists) { pl in
+                            Button {
+                                Task {
+                                    try? await APIClient.shared.addTrackToPlaylist(
+                                        playlistId: pl.id, trackId: track.id
+                                    )
+                                    addedToPlaylist = pl.name
+                                    DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+                                        addedToPlaylist = nil
+                                    }
+                                }
+                            } label: {
+                                HStack {
+                                    Image(systemName: "plus.circle")
+                                        .foregroundStyle(Color.accentOrange)
+                                    Text(pl.name)
+                                    Spacer()
+                                    if addedToPlaylist == pl.name {
+                                        Image(systemName: "checkmark")
+                                            .foregroundStyle(.green)
+                                    }
+                                    Text("\(pl.count ?? 0) tracks")
+                                        .font(.system(size: 12))
+                                        .foregroundStyle(.tertiary)
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -587,38 +626,102 @@ struct TrackEditSheet: View {
 // MARK: - Playlists
 struct PlaylistsView: View {
     @EnvironmentObject var player: PlayerViewModel
+    @State private var showNewPlaylist = false
+    @State private var newPlaylistName = ""
+    @State private var showSeratoCrates = false
+    @State private var seratoCrates: [APIClient.SeratoCrate] = []
 
     var body: some View {
         NavigationStack {
             ScrollView {
-                LazyVStack(spacing: 0) {
-                    ForEach(player.playlists) { pl in
-                        NavigationLink(destination: PlaylistDetailView(playlist: pl)) {
-                            HStack(spacing: 14) {
-                                ZStack {
-                                    LinearGradient(colors: [Color.accentOrange, Color.accentOrange.opacity(0.6)], startPoint: .topLeading, endPoint: .bottomTrailing)
-                                    Image(systemName: "music.note.list")
-                                        .font(.system(size: 20))
-                                        .foregroundStyle(.white)
-                                }
-                                .frame(width: 48, height: 48)
-                                .cornerRadius(10)
+                VStack(spacing: 0) {
+                    // Create + Serato buttons
+                    HStack(spacing: 10) {
+                        Button {
+                            showNewPlaylist = true
+                        } label: {
+                            HStack {
+                                Image(systemName: "plus.circle.fill")
+                                Text("New Playlist")
+                            }
+                            .font(.system(size: 13, weight: .semibold))
+                            .padding(.horizontal, 16).padding(.vertical, 10)
+                            .background(Color.accentOrange)
+                            .foregroundStyle(.white)
+                            .cornerRadius(10)
+                        }
 
-                                VStack(alignment: .leading, spacing: 2) {
-                                    Text(pl.name)
-                                        .font(.system(size: 15, weight: .medium))
-                                        .foregroundStyle(.primary)
-                                    Text("\(pl.count ?? 0) tracks")
+                        Button {
+                            Task {
+                                seratoCrates = (try? await APIClient.shared.fetchSeratoCrates()) ?? []
+                                showSeratoCrates = true
+                            }
+                        } label: {
+                            HStack {
+                                Image(systemName: "square.stack.3d.up")
+                                Text("Serato Crates")
+                            }
+                            .font(.system(size: 13, weight: .semibold))
+                            .padding(.horizontal, 16).padding(.vertical, 10)
+                            .background(Color.white.opacity(0.08))
+                            .foregroundStyle(.secondary)
+                            .cornerRadius(10)
+                        }
+
+                        Spacer()
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 12)
+
+                    LazyVStack(spacing: 0) {
+                        ForEach(player.playlists) { pl in
+                            NavigationLink(destination: PlaylistDetailView(playlist: pl)) {
+                                HStack(spacing: 14) {
+                                    ZStack {
+                                        LinearGradient(colors: [Color.accentOrange, Color.accentOrange.opacity(0.6)], startPoint: .topLeading, endPoint: .bottomTrailing)
+                                        Image(systemName: "music.note.list")
+                                            .font(.system(size: 20))
+                                            .foregroundStyle(.white)
+                                    }
+                                    .frame(width: 48, height: 48)
+                                    .cornerRadius(10)
+
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text(pl.name)
+                                            .font(.system(size: 15, weight: .medium))
+                                            .foregroundStyle(.primary)
+                                        Text("\(pl.count ?? 0) tracks")
+                                            .font(.system(size: 13))
+                                            .foregroundStyle(.tertiary)
+                                    }
+                                    Spacer()
+                                    Image(systemName: "chevron.right")
                                         .font(.system(size: 13))
                                         .foregroundStyle(.tertiary)
                                 }
-                                Spacer()
-                                Image(systemName: "chevron.right")
-                                    .font(.system(size: 13))
-                                    .foregroundStyle(.tertiary)
+                                .padding(.horizontal, 16)
+                                .padding(.vertical, 10)
                             }
-                            .padding(.horizontal, 16)
-                            .padding(.vertical, 10)
+                            .contextMenu {
+                                Button {
+                                    Task {
+                                        let path = try? await APIClient.shared.exportToSerato(playlistId: pl.id)
+                                        if let p = path, !p.isEmpty {
+                                            // Exported successfully
+                                        }
+                                    }
+                                } label: {
+                                    Label("Export to Serato", systemImage: "square.and.arrow.up")
+                                }
+                                Button(role: .destructive) {
+                                    Task {
+                                        try? await APIClient.shared.deletePlaylist(id: pl.id)
+                                        await player.loadPlaylists()
+                                    }
+                                } label: {
+                                    Label("Delete", systemImage: "trash")
+                                }
+                            }
                         }
                     }
                 }
@@ -626,7 +729,80 @@ struct PlaylistsView: View {
             }
             .navigationTitle("Playlists")
             .refreshable { await player.loadPlaylists() }
+            .alert("New Playlist", isPresented: $showNewPlaylist) {
+                TextField("Playlist name", text: $newPlaylistName)
+                Button("Create") {
+                    guard !newPlaylistName.isEmpty else { return }
+                    Task {
+                        _ = try? await APIClient.shared.createPlaylist(name: newPlaylistName)
+                        newPlaylistName = ""
+                        await player.loadPlaylists()
+                    }
+                }
+                Button("Cancel", role: .cancel) { newPlaylistName = "" }
+            }
+            .sheet(isPresented: $showSeratoCrates) {
+                SeratoCratesView(crates: seratoCrates)
+            }
         }
+    }
+}
+
+// MARK: - Serato Crates
+struct SeratoCratesView: View {
+    let crates: [APIClient.SeratoCrate]
+    @EnvironmentObject var player: PlayerViewModel
+    @Environment(\.dismiss) var dismiss
+    @State private var importing: String?
+
+    var body: some View {
+        NavigationStack {
+            List {
+                ForEach(crates) { crate in
+                    HStack {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(crate.name)
+                                .font(.system(size: 15, weight: .medium))
+                            HStack(spacing: 8) {
+                                Text("\(crate.count) tracks")
+                                Text(crate.source)
+                                    .foregroundStyle(crate.source == "live" ? .green : .orange)
+                            }
+                            .font(.system(size: 12))
+                            .foregroundStyle(.secondary)
+                        }
+                        Spacer()
+                        Button {
+                            Task {
+                                importing = crate.name
+                                try? await APIClient.shared.importSeratoCrate(path: crate.path, name: crate.name)
+                                await player.loadPlaylists()
+                                importing = nil
+                            }
+                        } label: {
+                            if importing == crate.name {
+                                ProgressView().scaleEffect(0.7)
+                            } else {
+                                Text("Import")
+                                    .font(.system(size: 12, weight: .semibold))
+                                    .padding(.horizontal, 12).padding(.vertical, 6)
+                                    .background(Color.accentOrange)
+                                    .foregroundStyle(.white)
+                                    .cornerRadius(8)
+                            }
+                        }
+                    }
+                }
+            }
+            .navigationTitle("Serato Crates")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Done") { dismiss() }
+                }
+            }
+        }
+        .preferredColorScheme(.dark)
     }
 }
 
@@ -635,6 +811,8 @@ struct PlaylistDetailView: View {
     @EnvironmentObject var player: PlayerViewModel
     @State private var tracks: [Track] = []
     @State private var loading = true
+    @State private var exporting = false
+    @State private var exported = false
 
     var body: some View {
         ScrollView {
@@ -653,6 +831,27 @@ struct PlaylistDetailView: View {
             }
         }
         .navigationTitle(playlist.name)
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button {
+                    Task {
+                        exporting = true
+                        _ = try? await APIClient.shared.exportToSerato(playlistId: playlist.id)
+                        exporting = false
+                        exported = true
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 2) { exported = false }
+                    }
+                } label: {
+                    if exporting {
+                        ProgressView().scaleEffect(0.7)
+                    } else if exported {
+                        Image(systemName: "checkmark").foregroundStyle(.green)
+                    } else {
+                        Label("Export to Serato", systemImage: "square.and.arrow.up")
+                    }
+                }
+            }
+        }
         .task {
             do {
                 let detail = try await APIClient.shared.fetchPlaylist(id: playlist.id)
