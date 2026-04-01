@@ -95,13 +95,13 @@ struct MainTabView: View {
 
     var body: some View {
         ZStack(alignment: .bottom) {
-            TabView(selection: $selectedTab) {
-                TracksView()
-                    .tag(0)
-                PlaylistsView()
-                    .tag(1)
+            Group {
+                if selectedTab == 0 {
+                    TracksView()
+                } else {
+                    PlaylistsView()
+                }
             }
-            .tabViewStyle(.page(indexDisplayMode: .never))
 
             VStack(spacing: 0) {
                 if player.currentTrack != nil {
@@ -155,6 +155,26 @@ struct TracksView: View {
         NavigationStack {
             ScrollView {
                 VStack(spacing: 0) {
+                    // Search bar
+                    HStack(spacing: 10) {
+                        Image(systemName: "magnifyingglass")
+                            .foregroundStyle(.tertiary)
+                        TextField("Search tracks...", text: $player.searchQuery)
+                            .textFieldStyle(.plain)
+                            .autocorrectionDisabled()
+                        if !player.searchQuery.isEmpty {
+                            Button { player.searchQuery = "" } label: {
+                                Image(systemName: "xmark.circle.fill")
+                                    .foregroundStyle(.tertiary)
+                            }
+                        }
+                    }
+                    .padding(10)
+                    .background(Color.white.opacity(0.06))
+                    .cornerRadius(10)
+                    .padding(.horizontal, 16)
+                    .padding(.top, 8)
+
                     // Genre chips
                     ScrollView(.horizontal, showsIndicators: false) {
                         HStack(spacing: 8) {
@@ -221,7 +241,6 @@ struct TracksView: View {
                 .padding(.bottom, 120)
             }
             .navigationTitle("Amapiano")
-            .searchable(text: $player.searchQuery, prompt: "Search tracks...")
             .refreshable { await player.loadTracks() }
         }
     }
