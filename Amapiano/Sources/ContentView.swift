@@ -26,6 +26,7 @@ struct SetupView: View {
     @State private var serverIP = ""
     @State private var testing = false
     @State private var error = false
+    @State private var autoConnecting = true
 
     var body: some View {
         VStack(spacing: 24) {
@@ -33,8 +34,14 @@ struct SetupView: View {
             Text("AMAPIANO")
                 .font(.system(size: 36, weight: .black))
                 .foregroundStyle(Color.accentOrange)
-            Text("Connect to your music server")
-                .foregroundStyle(.secondary)
+
+            if autoConnecting {
+                ProgressView("Finding server...")
+                    .foregroundStyle(.secondary)
+            } else {
+                Text("Connect to your music server")
+                    .foregroundStyle(.secondary)
+            }
 
             VStack(spacing: 12) {
                 TextField("Server IP (e.g. 192.168.1.162)", text: $serverIP)
@@ -71,6 +78,7 @@ struct SetupView: View {
             Spacer()
             Spacer()
         }
+        .task { await autoConnect() }
     }
 
     func testAndConnect() async {
@@ -85,6 +93,35 @@ struct SetupView: View {
             error = true
         }
         testing = false
+    }
+
+    func autoConnect() async {
+        // Try last saved URL first
+        if let last = UserDefaults.standard.string(forKey: "serverURL"), !last.isEmpty {
+            if await APIClient.shared.testConnection(url: last) {
+                APIClient.shared.baseURL = last
+                await player.connect()
+                return
+            }
+        }
+
+        // Try common local IPs on port 8766
+        let candidates = [
+            "192.168.1.162", // Known Mac IP
+            "127.0.0.1",
+            "localhost",
+        ]
+
+        for ip in candidates {
+            let url = "http://\(ip):8766"
+            if await APIClient.shared.testConnection(url: url) {
+                APIClient.shared.baseURL = url
+                await player.connect()
+                return
+            }
+        }
+
+        autoConnecting = false
     }
 }
 
