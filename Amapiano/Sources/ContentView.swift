@@ -251,6 +251,7 @@ struct TracksView: View {
                         TextField("Search tracks...", text: $player.searchQuery)
                             .textFieldStyle(.plain)
                             .autocorrectionDisabled()
+                            .submitLabel(.search)
                         if !player.searchQuery.isEmpty {
                             Button { player.searchQuery = "" } label: {
                                 Image(systemName: "xmark.circle.fill")
@@ -339,8 +340,7 @@ struct TracksView: View {
                 }
             }
             } // ScrollViewReader
-            .scrollDismissesKeyboard(.interactively)
-            .onTapGesture { UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil) }
+            .scrollDismissesKeyboard(.immediately)
             .navigationTitle("Amapiano")
             .refreshable { await player.loadTracks() }
         }
