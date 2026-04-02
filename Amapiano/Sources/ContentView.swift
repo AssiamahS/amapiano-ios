@@ -749,24 +749,26 @@ struct TrackEditSheet: View {
                                 .transition(.scale)
                         }
                     }
-                    if let tags = currentTags, !tags.isEmpty {
-                        FlowLayout(spacing: 6) {
-                            ForEach(tags, id: \.self) { tag in
-                                HStack(spacing: 4) {
-                                    Text("#\(tag)")
-                                        .font(.system(size: 12, weight: .medium))
-                                    Button {
-                                        Task { await removeTag(tag) }
-                                    } label: {
-                                        Image(systemName: "xmark")
-                                            .font(.system(size: 8, weight: .bold))
+                    if !(currentTags ?? []).isEmpty {
+                        ScrollView(.horizontal, showsIndicators: false) {
+                            HStack(spacing: 6) {
+                                ForEach(currentTags ?? [], id: \.self) { tag in
+                                    HStack(spacing: 4) {
+                                        Text("#\(tag)")
+                                            .font(.system(size: 12, weight: .medium))
+                                        Button {
+                                            Task { await removeTag(tag) }
+                                        } label: {
+                                            Image(systemName: "xmark.circle.fill")
+                                                .font(.system(size: 12))
+                                        }
                                     }
+                                    .padding(.horizontal, 8)
+                                    .padding(.vertical, 4)
+                                    .background(Color.accentOrange.opacity(0.15))
+                                    .foregroundStyle(Color.accentOrange)
+                                    .cornerRadius(8)
                                 }
-                                .padding(.horizontal, 8)
-                                .padding(.vertical, 4)
-                                .background(Color.accentOrange.opacity(0.15))
-                                .foregroundStyle(Color.accentOrange)
-                                .cornerRadius(8)
                             }
                         }
                     }

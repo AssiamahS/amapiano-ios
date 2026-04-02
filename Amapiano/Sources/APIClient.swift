@@ -15,6 +15,8 @@ class APIClient {
         config.timeoutIntervalForRequest = 10
         config.timeoutIntervalForResource = 30
         config.waitsForConnectivity = false
+        config.requestCachePolicy = .reloadIgnoringLocalCacheData
+        config.urlCache = nil
         return URLSession(configuration: config)
     }()
 
