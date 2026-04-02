@@ -1,4 +1,4 @@
-'''plaintext
+'''plaintext'''
 
 ▗ ▗   ▖ ▖  Claude Code v2.1.90
            Opus 4.6 (1M context) · Claude Max
