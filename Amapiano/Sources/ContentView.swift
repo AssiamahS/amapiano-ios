@@ -333,6 +333,7 @@ struct TracksView: View {
                 }
                 .padding(.bottom, 120)
             }
+            .scrollDismissesKeyboard(.immediately)
             .onChange(of: player.scrollToTrackId) { _, id in
                 if let id {
                     withAnimation {
@@ -342,7 +343,6 @@ struct TracksView: View {
                 }
             }
             } // ScrollViewReader
-            .scrollDismissesKeyboard(.immediately)
             .toolbar {
                 ToolbarItemGroup(placement: .keyboard) {
                     Spacer()
