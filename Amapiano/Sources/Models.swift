@@ -17,7 +17,9 @@ struct Track: Codable, Identifiable, Equatable {
         case customTags = "custom_tags"
     }
 
-    static func == (lhs: Track, rhs: Track) -> Bool { lhs.id == rhs.id }
+    static func == (lhs: Track, rhs: Track) -> Bool {
+        lhs.id == rhs.id && lhs.genre == rhs.genre && lhs.title == rhs.title && lhs.artist == rhs.artist && lhs.customTags == rhs.customTags
+    }
 }
 
 struct TracksResponse: Codable {

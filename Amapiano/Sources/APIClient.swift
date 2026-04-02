@@ -62,7 +62,10 @@ class APIClient {
     }
 
     func updateTrack(id: String, title: String? = nil, artist: String? = nil, genre: String? = nil) async throws {
-        guard let url = url("/api/tracks/\(id)") else { return }
+        guard let url = url("/api/tracks/\(id)") else {
+            print("[API] updateTrack: URL is nil, baseURL='\(baseURL)'")
+            return
+        }
         var req = URLRequest(url: url)
         req.httpMethod = "PATCH"
         req.setValue("application/json", forHTTPHeaderField: "Content-Type")
@@ -71,15 +74,22 @@ class APIClient {
         if let a = artist { body["artist"] = a }
         if let g = genre { body["genre"] = g }
         req.httpBody = try JSONEncoder().encode(body)
-        _ = try await localSession.data(for: req)
+        print("[API] PATCH \(url) body=\(body)")
+        let (data, response) = try await localSession.data(for: req)
+        let status = (response as? HTTPURLResponse)?.statusCode ?? 0
+        print("[API] PATCH response: \(status) \(String(data: data, encoding: .utf8)?.prefix(200) ?? "")")
     }
 
     func updateTags(id: String, tags: [String]) async throws {
-        guard let url = url("/api/tracks/\(id)") else { return }
+        guard let url = url("/api/tracks/\(id)") else {
+            print("[API] updateTags: URL is nil")
+            return
+        }
         var req = URLRequest(url: url)
         req.httpMethod = "PATCH"
         req.setValue("application/json", forHTTPHeaderField: "Content-Type")
         req.httpBody = try JSONSerialization.data(withJSONObject: ["custom_tags": tags])
+        print("[API] PATCH tags \(url) tags=\(tags)")
         _ = try await localSession.data(for: req)
     }
 

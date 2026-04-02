@@ -905,12 +905,17 @@ struct TrackEditSheet: View {
 
     func saveGenre(_ g: String) async {
         do {
+            print("[Edit] Saving genre '\(g)' for track \(track.id)")
             try await APIClient.shared.updateTrack(id: track.id, genre: g)
+            print("[Edit] Genre saved OK")
+            genre = g
             await player.loadTracks()
             await player.loadGenres()
             genreSaved = true
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { genreSaved = false }
-        } catch {}
+        } catch {
+            print("[Edit] Genre save FAILED: \(error)")
+        }
     }
 
     func addTag(_ tag: String) async {
@@ -920,13 +925,17 @@ struct TrackEditSheet: View {
         guard !tags.contains(trimmed) else { newTag = ""; return }
         tags.append(trimmed)
         do {
+            print("[Edit] Saving tags \(tags) for track \(track.id)")
             try await APIClient.shared.updateTags(id: track.id, tags: tags)
+            print("[Edit] Tags saved OK")
             currentTags = tags
             newTag = ""
             tagSaved = true
             await player.loadTracks()
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { tagSaved = false }
-        } catch {}
+        } catch {
+            print("[Edit] Tags save FAILED: \(error)")
+        }
     }
 
     func removeTag(_ tag: String) async {
