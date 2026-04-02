@@ -339,6 +339,8 @@ struct TracksView: View {
                 }
             }
             } // ScrollViewReader
+            .scrollDismissesKeyboard(.interactively)
+            .onTapGesture { UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil) }
             .navigationTitle("Amapiano")
             .refreshable { await player.loadTracks() }
         }
@@ -648,17 +650,15 @@ struct TrackEditSheet: View {
                 Section("Genre") {
                     HStack {
                         TextField("Genre", text: $genre)
-                        if genre != track.genre && !genre.isEmpty {
-                            Button {
-                                Task { await saveGenre(genre) }
-                            } label: {
-                                Text("Save")
-                                    .font(.system(size: 12, weight: .semibold))
-                                    .padding(.horizontal, 10).padding(.vertical, 4)
-                                    .background(Color.accentOrange)
-                                    .foregroundStyle(.white)
-                                    .cornerRadius(6)
+                            .onSubmit {
+                                if !genre.isEmpty {
+                                    Task { await saveGenre(genre) }
+                                }
                             }
+                        if genreSaved {
+                            Image(systemName: "checkmark.circle.fill")
+                                .foregroundStyle(.green)
+                                .transition(.scale)
                         }
                     }
 
