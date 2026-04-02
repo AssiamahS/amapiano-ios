@@ -10,6 +10,14 @@ class APIClient {
 
     var isConfigured: Bool { !baseURL.isEmpty }
 
+    private let localSession: URLSession = {
+        let config = URLSessionConfiguration.default
+        config.timeoutIntervalForRequest = 10
+        config.timeoutIntervalForResource = 30
+        config.waitsForConnectivity = false
+        return URLSession(configuration: config)
+    }()
+
     private func url(_ path: String) -> URL? {
         URL(string: "\(baseURL)\(path)")
     }
@@ -21,23 +29,23 @@ class APIClient {
         if let g = genre, !g.isEmpty { items.append(.init(name: "genre", value: g)) }
         if !items.isEmpty { components.queryItems = items }
 
-        let (data, _) = try await URLSession.shared.data(from: components.url!)
+        let (data, _) = try await localSession.data(from: components.url!)
         return try JSONDecoder().decode(TracksResponse.self, from: data).tracks
     }
 
     func fetchPlaylists() async throws -> [Playlist] {
         guard let url = url("/api/playlists") else { return [] }
-        let (data, _) = try await URLSession.shared.data(from: url)
+        let (data, _) = try await localSession.data(from: url)
         return try JSONDecoder().decode(PlaylistsResponse.self, from: data).playlists
     }
 
     func fetchPlaylist(id: String) async throws -> PlaylistDetail {
-        let (data, _) = try await URLSession.shared.data(from: url("/api/playlists/\(id)")!)
+        let (data, _) = try await localSession.data(from: url("/api/playlists/\(id)")!)
         return try JSONDecoder().decode(PlaylistDetail.self, from: data)
     }
 
     func fetchTags() async throws -> TagsResponse {
-        let (data, _) = try await URLSession.shared.data(from: url("/api/tags")!)
+        let (data, _) = try await localSession.data(from: url("/api/tags")!)
         return try JSONDecoder().decode(TagsResponse.self, from: data)
     }
 
@@ -62,7 +70,7 @@ class APIClient {
         if let a = artist { body["artist"] = a }
         if let g = genre { body["genre"] = g }
         req.httpBody = try JSONEncoder().encode(body)
-        _ = try await URLSession.shared.data(for: req)
+        _ = try await localSession.data(for: req)
     }
 
     func addTrackToPlaylist(playlistId: String, trackId: String) async throws {
@@ -71,7 +79,7 @@ class APIClient {
         req.httpMethod = "PATCH"
         req.setValue("application/json", forHTTPHeaderField: "Content-Type")
         req.httpBody = try JSONEncoder().encode(["add_track": trackId])
-        _ = try await URLSession.shared.data(for: req)
+        _ = try await localSession.data(for: req)
     }
 
     func spotifyGenreLookup(title: String, artist: String) async throws -> String? {
@@ -80,7 +88,7 @@ class APIClient {
         req.httpMethod = "POST"
         req.setValue("application/json", forHTTPHeaderField: "Content-Type")
         req.httpBody = try JSONEncoder().encode(["title": title, "artist": artist])
-        let (data, _) = try await URLSession.shared.data(for: req)
+        let (data, _) = try await localSession.data(for: req)
         let result = try JSONDecoder().decode([String: String?].self, from: data)
         return result["genre"] ?? nil
     }
@@ -92,7 +100,7 @@ class APIClient {
         req.setValue("application/json", forHTTPHeaderField: "Content-Type")
         let body: [String: Any] = ["name": name, "track_ids": trackIds]
         req.httpBody = try JSONSerialization.data(withJSONObject: body)
-        let (data, _) = try await URLSession.shared.data(for: req)
+        let (data, _) = try await localSession.data(for: req)
         if let result = try JSONSerialization.jsonObject(with: data) as? [String: Any] {
             return result["id"] as? String ?? ""
         }
@@ -103,7 +111,7 @@ class APIClient {
         guard let url = url("/api/playlists/\(id)") else { return }
         var req = URLRequest(url: url)
         req.httpMethod = "DELETE"
-        _ = try await URLSession.shared.data(for: req)
+        _ = try await localSession.data(for: req)
     }
 
     func exportToSerato(playlistId: String) async throws -> String {
@@ -112,7 +120,7 @@ class APIClient {
         req.httpMethod = "POST"
         req.setValue("application/json", forHTTPHeaderField: "Content-Type")
         req.httpBody = try JSONEncoder().encode(["playlist_id": playlistId])
-        let (data, _) = try await URLSession.shared.data(for: req)
+        let (data, _) = try await localSession.data(for: req)
         if let result = try JSONSerialization.jsonObject(with: data) as? [String: Any] {
             return result["path"] as? String ?? ""
         }
@@ -133,7 +141,7 @@ class APIClient {
 
     func fetchSeratoCrates() async throws -> [SeratoCrate] {
         guard let url = url("/api/serato/crates") else { return [] }
-        let (data, _) = try await URLSession.shared.data(from: url)
+        let (data, _) = try await localSession.data(from: url)
         return try JSONDecoder().decode(SeratoCratesResponse.self, from: data).crates
     }
 
@@ -143,15 +151,18 @@ class APIClient {
         req.httpMethod = "POST"
         req.setValue("application/json", forHTTPHeaderField: "Content-Type")
         req.httpBody = try JSONEncoder().encode(["path": path, "name": name])
-        _ = try await URLSession.shared.data(for: req)
+        _ = try await localSession.data(for: req)
     }
 
-    func testConnection(url: String) async -> Bool {
+    func testConnection(url: String, timeout: TimeInterval = 5) async -> Bool {
         guard let testURL = URL(string: "\(url)/api/stats") else { return false }
         do {
-            let (_, response) = try await URLSession.shared.data(from: testURL)
+            var req = URLRequest(url: testURL)
+            req.timeoutInterval = timeout
+            let (_, response) = try await localSession.data(for: req)
             return (response as? HTTPURLResponse)?.statusCode == 200
         } catch {
+            print("[APIClient] testConnection failed for \(url): \(error.localizedDescription)")
             return false
         }
     }

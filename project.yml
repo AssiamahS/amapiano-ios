@@ -32,8 +32,8 @@ targets:
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationPortrait
         UIApplicationSupportsIndirectInputEvents: true
+        NSLocalNetworkUsageDescription: "Amapiano needs local network access to connect to your music server."
         NSAppTransportSecurity:
-          NSAllowsLocalNetworking: true
           NSAllowsArbitraryLoads: true
         NSBonjourServices:
           - _http._tcp

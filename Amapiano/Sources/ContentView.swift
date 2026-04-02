@@ -4,19 +4,51 @@ import UIKit
 struct ContentView: View {
     @EnvironmentObject var player: PlayerViewModel
 
+    @State private var ready = false
+    @State private var checking = true
+
     var body: some View {
         Group {
-            if !APIClient.shared.isConfigured || !player.isConnected {
-                SetupView()
-            } else {
+            if checking {
+                VStack {
+                    Spacer()
+                    Text("AMAPIANO")
+                        .font(.system(size: 36, weight: .black))
+                        .foregroundStyle(Color.accentOrange)
+                    ProgressView("Connecting...")
+                        .foregroundStyle(.secondary)
+                        .padding(.top, 12)
+                    Spacer()
+                }
+            } else if ready {
                 MainTabView()
+            } else {
+                SetupView()
             }
         }
-        .task {
-            if APIClient.shared.isConfigured {
+        .task { await smartConnect() }
+    }
+
+    func smartConnect() async {
+        // Try all known URLs quickly
+        let urls = [
+            UserDefaults.standard.string(forKey: "serverURL") ?? "",
+            "http://100.97.199.99:8766",  // Tailscale
+            "http://192.168.1.162:8766",   // Local WiFi
+        ].filter { !$0.isEmpty }
+
+        for url in urls {
+            if await APIClient.shared.testConnection(url: url, timeout: 3) {
+                APIClient.shared.baseURL = url
                 await player.connect()
+                if player.isConnected {
+                    ready = true
+                    checking = false
+                    return
+                }
             }
         }
+        checking = false
     }
 }
 
@@ -84,9 +116,23 @@ struct SetupView: View {
     func testAndConnect() async {
         testing = true
         error = false
-        let url = "http://\(serverIP):8766"
-        let ok = await APIClient.shared.testConnection(url: url)
-        if ok {
+        // Clean up input — handle if user types full URL, just IP, or IP:port
+        var input = serverIP.trimmingCharacters(in: .whitespacesAndNewlines)
+        input = input.replacingOccurrences(of: "http://", with: "")
+        input = input.replacingOccurrences(of: "https://", with: "")
+        if input.contains(":") {
+            // Already has port
+            let url = "http://\(input)"
+            if await APIClient.shared.testConnection(url: url) {
+                APIClient.shared.baseURL = url
+                await player.connect()
+                testing = false
+                return
+            }
+        }
+        // Just an IP — add port
+        let url = "http://\(input):8766"
+        if await APIClient.shared.testConnection(url: url) {
             APIClient.shared.baseURL = url
             await player.connect()
         } else {
@@ -96,28 +142,31 @@ struct SetupView: View {
     }
 
     func autoConnect() async {
-        // Try last saved URL first
+        // Build list: saved URL first, then known IPs
+        var urls: [String] = []
         if let last = UserDefaults.standard.string(forKey: "serverURL"), !last.isEmpty {
-            if await APIClient.shared.testConnection(url: last) {
-                APIClient.shared.baseURL = last
-                await player.connect()
-                return
-            }
+            urls.append(last)
         }
-
-        // Try common local IPs on port 8766
-        let candidates = [
-            "192.168.1.162", // Known Mac IP
-            "127.0.0.1",
-            "localhost",
+        urls += [
+            "http://100.97.199.99:8766",  // Tailscale
+            "http://192.168.1.162:8766",   // Local WiFi
+            "http://127.0.0.1:8766",
         ]
+        // Remove duplicates
+        var seen = Set<String>()
+        urls = urls.filter { seen.insert($0).inserted }
 
-        for ip in candidates {
-            let url = "http://\(ip):8766"
-            if await APIClient.shared.testConnection(url: url) {
-                APIClient.shared.baseURL = url
-                await player.connect()
-                return
+        // Retry up to 3 times — first attempt triggers local network permission dialog on iOS 18+
+        for attempt in 1...3 {
+            for url in urls {
+                if await APIClient.shared.testConnection(url: url) {
+                    APIClient.shared.baseURL = url
+                    await player.connect()
+                    return
+                }
+            }
+            if attempt < 3 {
+                try? await Task.sleep(nanoseconds: 2_000_000_000) // 2s between retries
             }
         }
 
