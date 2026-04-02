@@ -236,6 +236,7 @@ struct CustomTabBar: View {
 struct TracksView: View {
     @EnvironmentObject var player: PlayerViewModel
     @State private var viewMode: ViewMode = .list
+    @FocusState private var isSearchFocused: Bool
 
     enum ViewMode { case list, grid }
 
@@ -252,6 +253,7 @@ struct TracksView: View {
                             .textFieldStyle(.plain)
                             .autocorrectionDisabled()
                             .submitLabel(.search)
+                            .focused($isSearchFocused)
                         if !player.searchQuery.isEmpty {
                             Button { player.searchQuery = "" } label: {
                                 Image(systemName: "xmark.circle.fill")
@@ -341,6 +343,12 @@ struct TracksView: View {
             }
             } // ScrollViewReader
             .scrollDismissesKeyboard(.immediately)
+            .toolbar {
+                ToolbarItemGroup(placement: .keyboard) {
+                    Spacer()
+                    Button("Done") { isSearchFocused = false }
+                }
+            }
             .navigationTitle("Amapiano")
             .refreshable { await player.loadTracks() }
         }
