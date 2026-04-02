@@ -235,6 +235,19 @@ class APIClient {
         let downloads: [Download]
     }
 
+    func resolveName(url: String) async throws -> String {
+        guard let apiURL = self.url("/api/resolve-name") else { return "" }
+        var req = URLRequest(url: apiURL)
+        req.httpMethod = "POST"
+        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        req.httpBody = try JSONEncoder().encode(["url": url])
+        let (data, _) = try await localSession.data(for: req)
+        if let result = try JSONSerialization.jsonObject(with: data) as? [String: Any] {
+            return result["name"] as? String ?? ""
+        }
+        return ""
+    }
+
     func startDownload(url: String, name: String) async throws -> String {
         guard let apiURL = self.url("/api/download") else { return "" }
         var req = URLRequest(url: apiURL)

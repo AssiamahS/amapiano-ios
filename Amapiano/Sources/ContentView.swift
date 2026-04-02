@@ -1206,6 +1206,7 @@ struct DownloadsView: View {
     @EnvironmentObject var player: PlayerViewModel
     @State private var url = ""
     @State private var playlistName = ""
+    @State private var resolving = false
     @State private var downloads: [APIClient.Download] = []
     @State private var downloading = false
     @State private var timer: Timer?
@@ -1223,12 +1224,22 @@ struct DownloadsView: View {
                             .cornerRadius(10)
                             .autocorrectionDisabled()
                             .textInputAutocapitalization(.never)
+                            .onChange(of: url) { _, newURL in
+                                if newURL.contains("spotify.com") || newURL.contains("soundcloud.com") {
+                                    Task { await resolveName(newURL) }
+                                }
+                            }
 
-                        TextField("Playlist name (optional)", text: $playlistName)
-                            .textFieldStyle(.plain)
-                            .padding(12)
-                            .background(Color.white.opacity(0.06))
-                            .cornerRadius(10)
+                        HStack {
+                            TextField(resolving ? "Fetching name..." : "Playlist name (auto-detected)", text: $playlistName)
+                                .textFieldStyle(.plain)
+                            if resolving {
+                                ProgressView().scaleEffect(0.7)
+                            }
+                        }
+                        .padding(12)
+                        .background(Color.white.opacity(0.06))
+                        .cornerRadius(10)
 
                         Button {
                             Task { await startDownload() }
@@ -1324,6 +1335,14 @@ struct DownloadsView: View {
             .onAppear { startPolling() }
             .onDisappear { timer?.invalidate() }
         }
+    }
+
+    func resolveName(_ urlStr: String) async {
+        resolving = true
+        if let name = try? await APIClient.shared.resolveName(url: urlStr), !name.isEmpty {
+            if playlistName.isEmpty { playlistName = name }
+        }
+        resolving = false
     }
 
     func startDownload() async {
