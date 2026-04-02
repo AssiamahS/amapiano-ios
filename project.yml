@@ -15,6 +15,7 @@ targets:
       - Amapiano/Sources
     resources:
       - Amapiano/Resources
+      - Amapiano/Resources/Assets.xcassets
     settings:
       PRODUCT_BUNDLE_IDENTIFIER: com.djsly.amapiano
       INFOPLIST_FILE: Amapiano/Resources/Info.plist
