@@ -1098,6 +1098,7 @@ struct MiniPlayer: View {
 struct FullPlayerView: View {
     @Binding var isPresented: Bool
     @EnvironmentObject var player: PlayerViewModel
+    @State private var dragOffset: CGFloat = 0
 
     var body: some View {
         VStack(spacing: 0) {
@@ -1197,6 +1198,21 @@ struct FullPlayerView: View {
 
             Spacer()
         }
+        .offset(y: dragOffset)
+        .gesture(
+            DragGesture()
+                .onChanged { value in
+                    if value.translation.height > 0 {
+                        dragOffset = value.translation.height
+                    }
+                }
+                .onEnded { value in
+                    if value.translation.height > 120 {
+                        isPresented = false
+                    }
+                    withAnimation(.easeOut(duration: 0.2)) { dragOffset = 0 }
+                }
+        )
         .background(Color(uiColor: .systemBackground))
         .preferredColorScheme(.dark)
     }
