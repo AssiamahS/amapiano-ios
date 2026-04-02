@@ -236,6 +236,7 @@ struct CustomTabBar: View {
 struct TracksView: View {
     @EnvironmentObject var player: PlayerViewModel
     @State private var viewMode: ViewMode = .list
+    @State private var heroTracks: [Track] = []
     @FocusState private var isSearchFocused: Bool
 
     enum ViewMode { case list, grid }
@@ -280,8 +281,8 @@ struct TracksView: View {
                     }
 
                     // Cover Flow carousel
-                    if !player.tracks.isEmpty && player.selectedGenre == nil && player.searchQuery.isEmpty {
-                        CoverFlowView(tracks: Array(player.tracks.shuffled().prefix(20)))
+                    if !heroTracks.isEmpty && player.selectedGenre == nil && player.searchQuery.isEmpty {
+                        CoverFlowView(tracks: heroTracks)
                             .padding(.bottom, 12)
                     }
 
@@ -351,6 +352,16 @@ struct TracksView: View {
             }
             .navigationTitle("Amapiano")
             .refreshable { await player.loadTracks() }
+            .onChange(of: player.tracks.count) {
+                if heroTracks.isEmpty && !player.tracks.isEmpty {
+                    heroTracks = Array(player.tracks.shuffled().prefix(20))
+                }
+            }
+            .onAppear {
+                if heroTracks.isEmpty && !player.tracks.isEmpty {
+                    heroTracks = Array(player.tracks.shuffled().prefix(20))
+                }
+            }
         }
     }
 
