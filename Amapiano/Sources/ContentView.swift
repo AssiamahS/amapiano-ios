@@ -603,7 +603,8 @@ struct TrackEditSheet: View {
     @State private var addedToPlaylist: String?
     @State private var showNewPlaylist = false
     @State private var newPlaylistName = ""
-    @State private var exportedToSerato = false
+    @State private var seratoCrates: [APIClient.SeratoCrate] = []
+    @State private var addedToCrate: String?
 
     init(track: Track) {
         self.track = track
@@ -700,30 +701,35 @@ struct TrackEditSheet: View {
                     }
                 }
 
-                Section("Serato") {
-                    Button {
-                        Task {
-                            // Create a playlist with just this track and export to Serato
-                            let name = "\(track.artist) - \(track.title)"
-                            let pid = try? await APIClient.shared.createPlaylist(name: name, trackIds: [track.id])
-                            if let pid, !pid.isEmpty {
-                                _ = try? await APIClient.shared.exportToSerato(playlistId: pid)
-                                exportedToSerato = true
-                                await player.loadPlaylists()
-                                DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
-                                    exportedToSerato = false
+                Section("Add to Serato Crate") {
+                    if seratoCrates.isEmpty {
+                        ProgressView("Loading crates...")
+                            .font(.system(size: 12))
+                            .foregroundStyle(.tertiary)
+                    } else {
+                        ForEach(seratoCrates) { crate in
+                            Button {
+                                Task {
+                                    try? await APIClient.shared.addToCrate(name: crate.name, trackId: track.id)
+                                    addedToCrate = crate.name
+                                    DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+                                        addedToCrate = nil
+                                    }
                                 }
-                            }
-                        }
-                    } label: {
-                        HStack {
-                            Image(systemName: "square.and.arrow.up")
-                                .foregroundStyle(Color.accentOrange)
-                            Text("Export as Serato Crate")
-                            Spacer()
-                            if exportedToSerato {
-                                Image(systemName: "checkmark")
-                                    .foregroundStyle(.green)
+                            } label: {
+                                HStack {
+                                    Image(systemName: "square.stack.3d.up")
+                                        .foregroundStyle(.green)
+                                    Text(crate.name)
+                                    Spacer()
+                                    if addedToCrate == crate.name {
+                                        Image(systemName: "checkmark")
+                                            .foregroundStyle(.green)
+                                    }
+                                    Text("\(crate.count)")
+                                        .font(.system(size: 12))
+                                        .foregroundStyle(.tertiary)
+                                }
                             }
                         }
                     }
@@ -746,6 +752,9 @@ struct TrackEditSheet: View {
         }
         .presentationDetents([.medium, .large])
         .preferredColorScheme(.dark)
+        .task {
+            seratoCrates = (try? await APIClient.shared.fetchSeratoCrates()) ?? []
+        }
         .alert("New Playlist", isPresented: $showNewPlaylist) {
             TextField("Playlist name", text: $newPlaylistName)
             Button("Create & Add") {
@@ -795,109 +804,48 @@ struct TrackEditSheet: View {
 // MARK: - Playlists
 struct PlaylistsView: View {
     @EnvironmentObject var player: PlayerViewModel
+    @State private var segment = 0 // 0=Playlists, 1=Crates
     @State private var showNewPlaylist = false
     @State private var newPlaylistName = ""
-    @State private var showSeratoCrates = false
+    @State private var showNewCrate = false
+    @State private var newCrateName = ""
     @State private var seratoCrates: [APIClient.SeratoCrate] = []
 
     var body: some View {
         NavigationStack {
-            ScrollView {
-                VStack(spacing: 0) {
-                    // Create + Serato buttons
-                    HStack(spacing: 10) {
-                        Button {
-                            showNewPlaylist = true
-                        } label: {
-                            HStack {
-                                Image(systemName: "plus.circle.fill")
-                                Text("New Playlist")
-                            }
-                            .font(.system(size: 13, weight: .semibold))
-                            .padding(.horizontal, 16).padding(.vertical, 10)
-                            .background(Color.accentOrange)
-                            .foregroundStyle(.white)
-                            .cornerRadius(10)
-                        }
+            VStack(spacing: 0) {
+                // Segment control
+                Picker("", selection: $segment) {
+                    Text("Playlists").tag(0)
+                    Text("Serato Crates").tag(1)
+                }
+                .pickerStyle(.segmented)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 8)
 
-                        Button {
-                            Task {
-                                seratoCrates = (try? await APIClient.shared.fetchSeratoCrates()) ?? []
-                                showSeratoCrates = true
-                            }
-                        } label: {
-                            HStack {
-                                Image(systemName: "square.stack.3d.up")
-                                Text("Serato Crates")
-                            }
-                            .font(.system(size: 13, weight: .semibold))
-                            .padding(.horizontal, 16).padding(.vertical, 10)
-                            .background(Color.white.opacity(0.08))
-                            .foregroundStyle(.secondary)
-                            .cornerRadius(10)
-                        }
-
-                        Spacer()
-                    }
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 12)
-
-                    LazyVStack(spacing: 0) {
-                        ForEach(player.playlists) { pl in
-                            NavigationLink(destination: PlaylistDetailView(playlist: pl)) {
-                                HStack(spacing: 14) {
-                                    ZStack {
-                                        LinearGradient(colors: [Color.accentOrange, Color.accentOrange.opacity(0.6)], startPoint: .topLeading, endPoint: .bottomTrailing)
-                                        Image(systemName: "music.note.list")
-                                            .font(.system(size: 20))
-                                            .foregroundStyle(.white)
-                                    }
-                                    .frame(width: 48, height: 48)
-                                    .cornerRadius(10)
-
-                                    VStack(alignment: .leading, spacing: 2) {
-                                        Text(pl.name)
-                                            .font(.system(size: 15, weight: .medium))
-                                            .foregroundStyle(.primary)
-                                        Text("\(pl.count ?? 0) tracks")
-                                            .font(.system(size: 13))
-                                            .foregroundStyle(.tertiary)
-                                    }
-                                    Spacer()
-                                    Image(systemName: "chevron.right")
-                                        .font(.system(size: 13))
-                                        .foregroundStyle(.tertiary)
-                                }
-                                .padding(.horizontal, 16)
-                                .padding(.vertical, 10)
-                            }
-                            .contextMenu {
-                                Button {
-                                    Task {
-                                        let path = try? await APIClient.shared.exportToSerato(playlistId: pl.id)
-                                        if let p = path, !p.isEmpty {
-                                            // Exported successfully
-                                        }
-                                    }
-                                } label: {
-                                    Label("Export to Serato", systemImage: "square.and.arrow.up")
-                                }
-                                Button(role: .destructive) {
-                                    Task {
-                                        try? await APIClient.shared.deletePlaylist(id: pl.id)
-                                        await player.loadPlaylists()
-                                    }
-                                } label: {
-                                    Label("Delete", systemImage: "trash")
-                                }
-                            }
-                        }
+                ScrollView {
+                    if segment == 0 {
+                        playlistsContent
+                    } else {
+                        cratesContent
                     }
                 }
-                .padding(.bottom, 120)
             }
-            .navigationTitle("Playlists")
-            .refreshable { await player.loadPlaylists() }
+            .navigationTitle(segment == 0 ? "Playlists" : "Crates")
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button {
+                        if segment == 0 { showNewPlaylist = true }
+                        else { showNewCrate = true }
+                    } label: {
+                        Image(systemName: "plus")
+                    }
+                }
+            }
+            .refreshable {
+                if segment == 0 { await player.loadPlaylists() }
+                else { await loadCrates() }
+            }
             .alert("New Playlist", isPresented: $showNewPlaylist) {
                 TextField("Playlist name", text: $newPlaylistName)
                 Button("Create") {
@@ -910,68 +858,222 @@ struct PlaylistsView: View {
                 }
                 Button("Cancel", role: .cancel) { newPlaylistName = "" }
             }
-            .sheet(isPresented: $showSeratoCrates) {
-                SeratoCratesView(crates: seratoCrates)
+            .alert("New Serato Crate", isPresented: $showNewCrate) {
+                TextField("Crate name", text: $newCrateName)
+                Button("Create") {
+                    guard !newCrateName.isEmpty else { return }
+                    Task {
+                        try? await APIClient.shared.createCrate(name: newCrateName)
+                        newCrateName = ""
+                        await loadCrates()
+                    }
+                }
+                Button("Cancel", role: .cancel) { newCrateName = "" }
             }
+            .task { await loadCrates() }
         }
     }
-}
 
-// MARK: - Serato Crates
-struct SeratoCratesView: View {
-    let crates: [APIClient.SeratoCrate]
-    @EnvironmentObject var player: PlayerViewModel
-    @Environment(\.dismiss) var dismiss
-    @State private var importing: String?
+    func loadCrates() async {
+        seratoCrates = (try? await APIClient.shared.fetchSeratoCrates()) ?? []
+    }
 
-    var body: some View {
-        NavigationStack {
-            List {
-                ForEach(crates) { crate in
-                    HStack {
+    // MARK: Playlists tab
+    var playlistsContent: some View {
+        LazyVStack(spacing: 0) {
+            ForEach(player.playlists) { pl in
+                NavigationLink(destination: PlaylistDetailView(playlist: pl)) {
+                    HStack(spacing: 14) {
+                        ZStack {
+                            LinearGradient(colors: [Color.accentOrange, Color.accentOrange.opacity(0.6)], startPoint: .topLeading, endPoint: .bottomTrailing)
+                            Image(systemName: "music.note.list")
+                                .font(.system(size: 20))
+                                .foregroundStyle(.white)
+                        }
+                        .frame(width: 48, height: 48)
+                        .cornerRadius(10)
+
                         VStack(alignment: .leading, spacing: 2) {
-                            Text(crate.name)
+                            Text(pl.name)
                                 .font(.system(size: 15, weight: .medium))
-                            HStack(spacing: 8) {
-                                Text("\(crate.count) tracks")
-                                Text(crate.source)
-                                    .foregroundStyle(crate.source == "live" ? .green : .orange)
-                            }
-                            .font(.system(size: 12))
-                            .foregroundStyle(.secondary)
+                                .foregroundStyle(.primary)
+                            Text("\(pl.count ?? 0) tracks")
+                                .font(.system(size: 13))
+                                .foregroundStyle(.tertiary)
                         }
                         Spacer()
-                        Button {
-                            Task {
-                                importing = crate.name
-                                try? await APIClient.shared.importSeratoCrate(path: crate.path, name: crate.name)
-                                await player.loadPlaylists()
-                                importing = nil
-                            }
-                        } label: {
-                            if importing == crate.name {
-                                ProgressView().scaleEffect(0.7)
-                            } else {
-                                Text("Import")
-                                    .font(.system(size: 12, weight: .semibold))
-                                    .padding(.horizontal, 12).padding(.vertical, 6)
-                                    .background(Color.accentOrange)
-                                    .foregroundStyle(.white)
-                                    .cornerRadius(8)
-                            }
+                        Image(systemName: "chevron.right")
+                            .font(.system(size: 13))
+                            .foregroundStyle(.tertiary)
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 10)
+                }
+                .contextMenu {
+                    Button {
+                        Task { _ = try? await APIClient.shared.exportToSerato(playlistId: pl.id) }
+                    } label: {
+                        Label("Export to Serato", systemImage: "square.and.arrow.up")
+                    }
+                    Button(role: .destructive) {
+                        Task {
+                            try? await APIClient.shared.deletePlaylist(id: pl.id)
+                            await player.loadPlaylists()
                         }
+                    } label: {
+                        Label("Delete", systemImage: "trash")
                     }
                 }
             }
-            .navigationTitle("Serato Crates")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Done") { dismiss() }
+        }
+        .padding(.bottom, 120)
+    }
+
+    // MARK: Crates tab
+    var cratesContent: some View {
+        LazyVStack(spacing: 0) {
+            ForEach(seratoCrates) { crate in
+                NavigationLink(destination: CrateDetailView(crateName: crate.name)) {
+                    HStack(spacing: 14) {
+                        ZStack {
+                            LinearGradient(colors: [.green.opacity(0.7), .green.opacity(0.3)], startPoint: .topLeading, endPoint: .bottomTrailing)
+                            Image(systemName: "square.stack.3d.up")
+                                .font(.system(size: 18))
+                                .foregroundStyle(.white)
+                        }
+                        .frame(width: 48, height: 48)
+                        .cornerRadius(10)
+
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(crate.name)
+                                .font(.system(size: 15, weight: .medium))
+                                .foregroundStyle(.primary)
+                            HStack(spacing: 6) {
+                                Text("\(crate.count) tracks")
+                                Circle()
+                                    .fill(crate.source == "live" ? .green : .orange)
+                                    .frame(width: 6, height: 6)
+                                Text(crate.source)
+                            }
+                            .font(.system(size: 12))
+                            .foregroundStyle(.tertiary)
+                        }
+                        Spacer()
+                        Image(systemName: "chevron.right")
+                            .font(.system(size: 13))
+                            .foregroundStyle(.tertiary)
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 10)
                 }
             }
         }
-        .preferredColorScheme(.dark)
+        .padding(.bottom, 120)
+    }
+}
+
+// MARK: - Crate Detail
+struct CrateDetailView: View {
+    let crateName: String
+    @EnvironmentObject var player: PlayerViewModel
+    @State private var tracks: [Track] = []
+    @State private var loading = true
+    @State private var showRename = false
+    @State private var newName = ""
+    @Environment(\.dismiss) var dismiss
+
+    var body: some View {
+        List {
+            if loading {
+                ProgressView().frame(maxWidth: .infinity).padding(40)
+                    .listRowBackground(Color.clear)
+            } else {
+                ForEach(tracks) { track in
+                    HStack(spacing: 12) {
+                        if let coverURL = APIClient.shared.coverURL(for: track) {
+                            AsyncImage(url: coverURL) { image in
+                                image.resizable().aspectRatio(contentMode: .fill)
+                            } placeholder: {
+                                Color.white.opacity(0.08)
+                            }
+                            .frame(width: 40, height: 40)
+                            .cornerRadius(6)
+                        }
+
+                        VStack(alignment: .leading, spacing: 1) {
+                            Text(track.title)
+                                .font(.system(size: 14, weight: .medium))
+                                .lineLimit(1)
+                            Text(track.artist)
+                                .font(.system(size: 12))
+                                .foregroundStyle(.secondary)
+                                .lineLimit(1)
+                        }
+
+                        Spacer()
+
+                        Text(formatTime(track.duration))
+                            .font(.system(size: 11, design: .monospaced))
+                            .foregroundStyle(.tertiary)
+                    }
+                    .contentShape(Rectangle())
+                    .onTapGesture {
+                        player.play(track: track, from: tracks)
+                    }
+                }
+                .onDelete { indexSet in
+                    let idsToRemove = indexSet.map { tracks[$0].id }
+                    tracks.remove(atOffsets: indexSet)
+                    Task {
+                        for tid in idsToRemove {
+                            try? await APIClient.shared.removeFromCrate(name: crateName, trackId: tid)
+                        }
+                    }
+                }
+                .onMove { from, to in
+                    tracks.move(fromOffsets: from, toOffset: to)
+                    Task {
+                        try? await APIClient.shared.reorderCrate(name: crateName, trackIds: tracks.map(\.id))
+                    }
+                }
+            }
+        }
+        .listStyle(.plain)
+        .navigationTitle(crateName)
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                EditButton()
+            }
+            ToolbarItem(placement: .topBarTrailing) {
+                Menu {
+                    Button {
+                        newName = crateName
+                        showRename = true
+                    } label: {
+                        Label("Rename", systemImage: "pencil")
+                    }
+                } label: {
+                    Image(systemName: "ellipsis.circle")
+                }
+            }
+        }
+        .alert("Rename Crate", isPresented: $showRename) {
+            TextField("Crate name", text: $newName)
+            Button("Rename") {
+                guard !newName.isEmpty, newName != crateName else { return }
+                Task {
+                    try? await APIClient.shared.renameCrate(name: crateName, newName: newName)
+                    dismiss()
+                }
+            }
+            Button("Cancel", role: .cancel) {}
+        }
+        .task {
+            do {
+                tracks = try await APIClient.shared.fetchCrateTracks(name: crateName)
+            } catch {}
+            loading = false
+        }
     }
 }
 
@@ -1199,6 +1301,7 @@ struct FullPlayerView: View {
             Spacer()
         }
         .offset(y: dragOffset)
+        .opacity(dragOffset > 0 ? Double(1 - (dragOffset / 400)) : 1)
         .gesture(
             DragGesture()
                 .onChanged { value in
@@ -1207,10 +1310,17 @@ struct FullPlayerView: View {
                     }
                 }
                 .onEnded { value in
-                    if value.translation.height > 120 {
-                        isPresented = false
+                    if value.translation.height > 100 {
+                        withAnimation(.easeOut(duration: 0.25)) {
+                            dragOffset = UIScreen.main.bounds.height
+                        }
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
+                            isPresented = false
+                            dragOffset = 0
+                        }
+                    } else {
+                        withAnimation(.spring(response: 0.3)) { dragOffset = 0 }
                     }
-                    withAnimation(.easeOut(duration: 0.2)) { dragOffset = 0 }
                 }
         )
         .background(Color(uiColor: .systemBackground))

@@ -145,6 +145,67 @@ class APIClient {
         return try JSONDecoder().decode(SeratoCratesResponse.self, from: data).crates
     }
 
+    struct CrateTracksResponse: Codable {
+        let name: String
+        let tracks: [Track]
+    }
+
+    func fetchCrateTracks(name: String) async throws -> [Track] {
+        let encoded = name.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? name
+        guard let url = url("/api/serato/crates/\(encoded)/tracks") else { return [] }
+        let (data, _) = try await localSession.data(from: url)
+        return try JSONDecoder().decode(CrateTracksResponse.self, from: data).tracks
+    }
+
+    func addToCrate(name: String, trackId: String) async throws {
+        let encoded = name.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? name
+        guard let url = url("/api/serato/crates/\(encoded)/add") else { return }
+        var req = URLRequest(url: url)
+        req.httpMethod = "POST"
+        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        req.httpBody = try JSONEncoder().encode(["track_id": trackId])
+        _ = try await localSession.data(for: req)
+    }
+
+    func removeFromCrate(name: String, trackId: String) async throws {
+        let encoded = name.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? name
+        guard let url = url("/api/serato/crates/\(encoded)/remove") else { return }
+        var req = URLRequest(url: url)
+        req.httpMethod = "POST"
+        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        req.httpBody = try JSONEncoder().encode(["track_id": trackId])
+        _ = try await localSession.data(for: req)
+    }
+
+    func reorderCrate(name: String, trackIds: [String]) async throws {
+        let encoded = name.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? name
+        guard let url = url("/api/serato/crates/\(encoded)/reorder") else { return }
+        var req = URLRequest(url: url)
+        req.httpMethod = "POST"
+        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        req.httpBody = try JSONSerialization.data(withJSONObject: ["track_ids": trackIds])
+        _ = try await localSession.data(for: req)
+    }
+
+    func renameCrate(name: String, newName: String) async throws {
+        let encoded = name.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? name
+        guard let url = url("/api/serato/crates/\(encoded)/rename") else { return }
+        var req = URLRequest(url: url)
+        req.httpMethod = "POST"
+        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        req.httpBody = try JSONEncoder().encode(["name": newName])
+        _ = try await localSession.data(for: req)
+    }
+
+    func createCrate(name: String) async throws {
+        guard let url = url("/api/serato/crates/create") else { return }
+        var req = URLRequest(url: url)
+        req.httpMethod = "POST"
+        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        req.httpBody = try JSONEncoder().encode(["name": name])
+        _ = try await localSession.data(for: req)
+    }
+
     func importSeratoCrate(path: String, name: String) async throws {
         guard let url = url("/api/serato/crates/import") else { return }
         var req = URLRequest(url: url)
