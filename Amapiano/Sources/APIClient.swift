@@ -215,6 +215,50 @@ class APIClient {
         _ = try await localSession.data(for: req)
     }
 
+    // MARK: - Downloads
+
+    struct Download: Codable, Identifiable {
+        let id: String
+        let status: String
+        let url: String
+        let name: String
+        let newTracks: Int?
+        let error: String?
+
+        enum CodingKeys: String, CodingKey {
+            case id, status, url, name, error
+            case newTracks = "new_tracks"
+        }
+    }
+
+    struct DownloadsResponse: Codable {
+        let downloads: [Download]
+    }
+
+    func startDownload(url: String, name: String) async throws -> String {
+        guard let apiURL = self.url("/api/download") else { return "" }
+        var req = URLRequest(url: apiURL)
+        req.httpMethod = "POST"
+        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        req.httpBody = try JSONEncoder().encode(["url": url, "name": name])
+        let (data, _) = try await localSession.data(for: req)
+        if let result = try JSONSerialization.jsonObject(with: data) as? [String: Any] {
+            return result["id"] as? String ?? ""
+        }
+        return ""
+    }
+
+    func fetchDownloads() async throws -> [Download] {
+        guard let url = url("/api/downloads") else { return [] }
+        let (data, _) = try await localSession.data(from: url)
+        return try JSONDecoder().decode(DownloadsResponse.self, from: data).downloads
+    }
+
+    func fetchDownloadStatus(id: String) async throws -> Download {
+        let (data, _) = try await localSession.data(from: url("/api/download/\(id)")!)
+        return try JSONDecoder().decode(Download.self, from: data)
+    }
+
     func testConnection(url: String, timeout: TimeInterval = 5) async -> Bool {
         guard let testURL = URL(string: "\(url)/api/stats") else { return false }
         do {

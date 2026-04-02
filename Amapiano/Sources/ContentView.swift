@@ -182,10 +182,11 @@ struct MainTabView: View {
     var body: some View {
         ZStack(alignment: .bottom) {
             Group {
-                if selectedTab == 0 {
-                    TracksView()
-                } else {
-                    PlaylistsView()
+                switch selectedTab {
+                case 0: TracksView()
+                case 1: PlaylistsView()
+                case 2: DownloadsView()
+                default: TracksView()
                 }
             }
 
@@ -207,6 +208,7 @@ struct CustomTabBar: View {
         HStack {
             tabButton(icon: "music.note.list", label: "Tracks", tag: 0)
             tabButton(icon: "square.stack", label: "Playlists", tag: 1)
+            tabButton(icon: "arrow.down.circle", label: "Downloads", tag: 2)
         }
         .padding(.horizontal, 32)
         .padding(.top, 8)
@@ -616,6 +618,7 @@ struct TrackEditSheet: View {
     @State private var newPlaylistName = ""
     @State private var seratoCrates: [APIClient.SeratoCrate] = []
     @State private var addedToCrate: String?
+    @State private var genreSaved = false
 
     init(track: Track) {
         self.track = track
@@ -643,7 +646,21 @@ struct TrackEditSheet: View {
                 }
 
                 Section("Genre") {
-                    TextField("Genre", text: $genre)
+                    HStack {
+                        TextField("Genre", text: $genre)
+                        if genre != track.genre && !genre.isEmpty {
+                            Button {
+                                Task { await saveGenre(genre) }
+                            } label: {
+                                Text("Save")
+                                    .font(.system(size: 12, weight: .semibold))
+                                    .padding(.horizontal, 10).padding(.vertical, 4)
+                                    .background(Color.accentOrange)
+                                    .foregroundStyle(.white)
+                                    .cornerRadius(6)
+                            }
+                        }
+                    }
 
                     // Filtered suggestions while typing
                     if !genre.isEmpty {
@@ -652,6 +669,7 @@ struct TrackEditSheet: View {
                             ForEach(matches.prefix(5), id: \.self) { g in
                                 Button {
                                     genre = g
+                                    Task { await saveGenre(g) }
                                 } label: {
                                     HStack {
                                         Image(systemName: "magnifyingglass")
@@ -671,20 +689,26 @@ struct TrackEditSheet: View {
                         ScrollView(.horizontal, showsIndicators: false) {
                             HStack(spacing: 8) {
                                 ForEach(player.genres, id: \.self) { g in
-                                    Button(g) { genre = g }
-                                        .font(.system(size: 12, weight: .medium))
-                                        .padding(.horizontal, 10)
-                                        .padding(.vertical, 5)
-                                        .background(genre == g ? Color.accentOrange : Color.white.opacity(0.08))
-                                        .foregroundStyle(genre == g ? .white : .secondary)
-                                        .cornerRadius(12)
+                                    Button(g) {
+                                        genre = g
+                                        Task { await saveGenre(g) }
+                                    }
+                                    .font(.system(size: 12, weight: .medium))
+                                    .padding(.horizontal, 10)
+                                    .padding(.vertical, 5)
+                                    .background(genre == g ? Color.accentOrange : Color.white.opacity(0.08))
+                                    .foregroundStyle(genre == g ? .white : .secondary)
+                                    .cornerRadius(12)
                                 }
                             }
                         }
                     }
 
                     Button("Lookup Genre via Spotify") {
-                        Task { await spotifyLookup() }
+                        Task {
+                            await spotifyLookup()
+                            if !genre.isEmpty { await saveGenre(genre) }
+                        }
                     }
                     .foregroundStyle(Color.accentOrange)
                 }
@@ -822,9 +846,20 @@ struct TrackEditSheet: View {
                 genre: genre != track.genre ? genre : nil
             )
             await player.loadTracks()
+            await player.loadGenres()
             dismiss()
         } catch {}
         saving = false
+    }
+
+    func saveGenre(_ g: String) async {
+        do {
+            try await APIClient.shared.updateTrack(id: track.id, genre: g)
+            await player.loadTracks()
+            await player.loadGenres()
+            genreSaved = true
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { genreSaved = false }
+        } catch {}
     }
 
     func spotifyLookup() async {
@@ -1162,6 +1197,169 @@ struct PlaylistDetailView: View {
                 tracks = detail.tracks
             } catch {}
             loading = false
+        }
+    }
+}
+
+// MARK: - Downloads
+struct DownloadsView: View {
+    @EnvironmentObject var player: PlayerViewModel
+    @State private var url = ""
+    @State private var playlistName = ""
+    @State private var downloads: [APIClient.Download] = []
+    @State private var downloading = false
+    @State private var timer: Timer?
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(spacing: 16) {
+                    // Input
+                    VStack(spacing: 10) {
+                        TextField("Spotify or SoundCloud URL", text: $url)
+                            .textFieldStyle(.plain)
+                            .padding(12)
+                            .background(Color.white.opacity(0.06))
+                            .cornerRadius(10)
+                            .autocorrectionDisabled()
+                            .textInputAutocapitalization(.never)
+
+                        TextField("Playlist name (optional)", text: $playlistName)
+                            .textFieldStyle(.plain)
+                            .padding(12)
+                            .background(Color.white.opacity(0.06))
+                            .cornerRadius(10)
+
+                        Button {
+                            Task { await startDownload() }
+                        } label: {
+                            HStack {
+                                if downloading { ProgressView().tint(.white).scaleEffect(0.8) }
+                                Image(systemName: "arrow.down.circle.fill")
+                                Text("Download")
+                                    .fontWeight(.semibold)
+                            }
+                            .frame(maxWidth: .infinity)
+                            .padding(12)
+                            .background(url.isEmpty ? Color.gray.opacity(0.3) : Color.accentOrange)
+                            .foregroundStyle(.white)
+                            .cornerRadius(10)
+                        }
+                        .disabled(url.isEmpty || downloading)
+                    }
+                    .padding(.horizontal, 16)
+
+                    // Downloads list
+                    if !downloads.isEmpty {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Downloads")
+                                .font(.system(size: 14, weight: .semibold))
+                                .foregroundStyle(.secondary)
+                                .padding(.horizontal, 16)
+
+                            ForEach(downloads) { dl in
+                                HStack(spacing: 12) {
+                                    // Status icon
+                                    Group {
+                                        switch dl.status {
+                                        case "queued":
+                                            Image(systemName: "clock")
+                                                .foregroundStyle(.secondary)
+                                        case "downloading":
+                                            ProgressView().scaleEffect(0.7)
+                                        case "done":
+                                            Image(systemName: "checkmark.circle.fill")
+                                                .foregroundStyle(.green)
+                                        case "error":
+                                            Image(systemName: "xmark.circle.fill")
+                                                .foregroundStyle(.red)
+                                        default:
+                                            Image(systemName: "questionmark.circle")
+                                        }
+                                    }
+                                    .frame(width: 24)
+
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text(dl.name)
+                                            .font(.system(size: 14, weight: .medium))
+                                            .lineLimit(1)
+                                        Text(dl.url)
+                                            .font(.system(size: 11, design: .monospaced))
+                                            .foregroundStyle(.tertiary)
+                                            .lineLimit(1)
+                                        if dl.status == "done", let count = dl.newTracks {
+                                            Text("\(count) tracks added")
+                                                .font(.system(size: 11))
+                                                .foregroundStyle(.green)
+                                        }
+                                        if let error = dl.error, !error.isEmpty {
+                                            Text(error)
+                                                .font(.system(size: 11))
+                                                .foregroundStyle(.red)
+                                                .lineLimit(2)
+                                        }
+                                    }
+
+                                    Spacer()
+
+                                    Text(dl.status)
+                                        .font(.system(size: 10, weight: .medium))
+                                        .padding(.horizontal, 8).padding(.vertical, 3)
+                                        .background(statusColor(dl.status).opacity(0.15))
+                                        .foregroundStyle(statusColor(dl.status))
+                                        .cornerRadius(6)
+                                }
+                                .padding(.horizontal, 16)
+                                .padding(.vertical, 8)
+                            }
+                        }
+                    }
+                }
+                .padding(.top, 8)
+                .padding(.bottom, 120)
+            }
+            .navigationTitle("Downloads")
+            .refreshable { await loadDownloads() }
+            .task { await loadDownloads() }
+            .onAppear { startPolling() }
+            .onDisappear { timer?.invalidate() }
+        }
+    }
+
+    func startDownload() async {
+        downloading = true
+        let name = playlistName.isEmpty ? "Download \(Date().formatted(.dateTime.month().day().hour().minute()))" : playlistName
+        _ = try? await APIClient.shared.startDownload(url: url, name: name)
+        url = ""
+        playlistName = ""
+        downloading = false
+        await loadDownloads()
+    }
+
+    func loadDownloads() async {
+        downloads = (try? await APIClient.shared.fetchDownloads()) ?? []
+    }
+
+    func startPolling() {
+        timer = Timer.scheduledTimer(withTimeInterval: 3, repeats: true) { _ in
+            Task { @MainActor in
+                await loadDownloads()
+                // Refresh tracks if any download just finished
+                if downloads.contains(where: { $0.status == "done" }) {
+                    await player.loadTracks()
+                    await player.loadPlaylists()
+                }
+            }
+        }
+    }
+
+    func statusColor(_ status: String) -> Color {
+        switch status {
+        case "queued": return .secondary
+        case "downloading": return Color.accentOrange
+        case "done": return .green
+        case "error": return .red
+        default: return .secondary
         }
     }
 }
