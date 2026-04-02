@@ -735,6 +735,14 @@ struct TrackEditSheet: View {
                                     Task { await addTag(newTag) }
                                 }
                             }
+                        if !newTag.isEmpty {
+                            Button {
+                                Task { await addTag(newTag) }
+                            } label: {
+                                Image(systemName: "plus.circle.fill")
+                                    .foregroundStyle(Color.accentOrange)
+                            }
+                        }
                         if tagSaved {
                             Image(systemName: "checkmark.circle.fill")
                                 .foregroundStyle(.green)
