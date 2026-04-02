@@ -90,10 +90,13 @@ class PlayerViewModel: ObservableObject {
 
     func loadTracks() async {
         do {
-            tracks = try await api.fetchTracks(
-                query: searchQuery.isEmpty ? nil : searchQuery,
-                genre: selectedGenre
-            )
+            let q = searchQuery.trimmingCharacters(in: .whitespaces)
+            if q.hasPrefix("#") {
+                let tag = String(q.dropFirst())
+                tracks = try await api.fetchTracks(genre: selectedGenre, tag: tag.isEmpty ? nil : tag)
+            } else {
+                tracks = try await api.fetchTracks(query: q.isEmpty ? nil : q, genre: selectedGenre)
+            }
         } catch {
             errorMessage = "Failed to load tracks"
         }

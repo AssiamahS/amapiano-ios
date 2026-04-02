@@ -22,11 +22,12 @@ class APIClient {
         URL(string: "\(baseURL)\(path)")
     }
 
-    func fetchTracks(query: String? = nil, genre: String? = nil) async throws -> [Track] {
+    func fetchTracks(query: String? = nil, genre: String? = nil, tag: String? = nil) async throws -> [Track] {
         var components = URLComponents(string: "\(baseURL)/api/tracks")!
         var items: [URLQueryItem] = []
         if let q = query, !q.isEmpty { items.append(.init(name: "q", value: q)) }
         if let g = genre, !g.isEmpty { items.append(.init(name: "genre", value: g)) }
+        if let t = tag, !t.isEmpty { items.append(.init(name: "tag", value: t)) }
         if !items.isEmpty { components.queryItems = items }
 
         let (data, _) = try await localSession.data(from: components.url!)
