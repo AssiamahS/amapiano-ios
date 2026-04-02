@@ -1225,7 +1225,7 @@ struct DownloadsView: View {
                             .autocorrectionDisabled()
                             .textInputAutocapitalization(.never)
                             .onChange(of: url) { _, newURL in
-                                if newURL.contains("spotify.com") || newURL.contains("soundcloud.com") {
+                                if newURL.contains("spotify.com") || newURL.contains("soundcloud.com") || newURL.contains("youtube.com") || newURL.contains("youtu.be") {
                                     Task { await resolveName(newURL) }
                                 }
                             }
