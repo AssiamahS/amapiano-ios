@@ -982,6 +982,7 @@ struct PlaylistsView: View {
                         cratesContent
                     }
                 }
+                .scrollDismissesKeyboard(.immediately)
             }
             .navigationTitle(segment == 0 ? "Playlists" : "Crates")
             .toolbar {
@@ -1418,6 +1419,7 @@ struct DownloadsView: View {
                 .padding(.top, 8)
                 .padding(.bottom, 120)
             }
+            .scrollDismissesKeyboard(.immediately)
             .navigationTitle("Downloads")
             .refreshable { await loadDownloads() }
             .task { await loadDownloads() }
