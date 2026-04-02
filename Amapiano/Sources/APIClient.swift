@@ -224,9 +224,10 @@ class APIClient {
         let name: String
         let newTracks: Int?
         let error: String?
+        let progress: String?
 
         enum CodingKeys: String, CodingKey {
-            case id, status, url, name, error
+            case id, status, url, name, error, progress
             case newTracks = "new_tracks"
         }
     }

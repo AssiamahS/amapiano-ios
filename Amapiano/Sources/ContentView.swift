@@ -1298,6 +1298,11 @@ struct DownloadsView: View {
                                             .font(.system(size: 11, design: .monospaced))
                                             .foregroundStyle(.tertiary)
                                             .lineLimit(1)
+                                        if dl.status == "downloading", let progress = dl.progress {
+                                            Text("Downloading track \(progress)")
+                                                .font(.system(size: 11))
+                                                .foregroundStyle(Color.accentOrange)
+                                        }
                                         if dl.status == "done", let count = dl.newTracks {
                                             Text("\(count) tracks added")
                                                 .font(.system(size: 11))
