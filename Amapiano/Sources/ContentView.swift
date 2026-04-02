@@ -645,7 +645,29 @@ struct TrackEditSheet: View {
                 Section("Genre") {
                     TextField("Genre", text: $genre)
 
-                    if !player.genres.isEmpty {
+                    // Filtered suggestions while typing
+                    if !genre.isEmpty {
+                        let matches = player.genres.filter { $0.localizedCaseInsensitiveContains(genre) && $0.lowercased() != genre.lowercased() }
+                        if !matches.isEmpty {
+                            ForEach(matches.prefix(5), id: \.self) { g in
+                                Button {
+                                    genre = g
+                                } label: {
+                                    HStack {
+                                        Image(systemName: "magnifyingglass")
+                                            .font(.system(size: 12))
+                                            .foregroundStyle(.tertiary)
+                                        Text(g)
+                                            .font(.system(size: 14))
+                                        Spacer()
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    // All genres as chips
+                    if genre.isEmpty && !player.genres.isEmpty {
                         ScrollView(.horizontal, showsIndicators: false) {
                             HStack(spacing: 8) {
                                 ForEach(player.genres, id: \.self) { g in
@@ -1230,7 +1252,17 @@ struct FullPlayerView: View {
                     .font(.system(size: 13, weight: .medium))
                     .foregroundStyle(.secondary)
                 Spacer()
-                Color.clear.frame(width: 40, height: 40)
+                Button {
+                    if let track = player.currentTrack {
+                        player.scrollToTrackId = track.id
+                        isPresented = false
+                    }
+                } label: {
+                    Image(systemName: "list.bullet")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundStyle(.secondary)
+                        .padding(12)
+                }
             }
             .padding(.horizontal, 8)
 
