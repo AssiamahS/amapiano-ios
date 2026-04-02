@@ -674,6 +674,8 @@ struct TrackEditSheet: View {
                                 try? await APIClient.shared.addTrackToPlaylist(
                                     playlistId: pl.id, trackId: track.id
                                 )
+                                // Auto-export updated playlist to Serato
+                                _ = try? await APIClient.shared.exportToSerato(playlistId: pl.id)
                                 addedToPlaylist = pl.name
                                 await player.loadPlaylists()
                                 DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
@@ -752,7 +754,9 @@ struct TrackEditSheet: View {
                     let pid = try? await APIClient.shared.createPlaylist(
                         name: newPlaylistName, trackIds: [track.id]
                     )
-                    if pid != nil {
+                    if let pid, !pid.isEmpty {
+                        // Auto-export to Serato crate
+                        _ = try? await APIClient.shared.exportToSerato(playlistId: pid)
                         addedToPlaylist = newPlaylistName
                         await player.loadPlaylists()
                         DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
