@@ -730,45 +730,27 @@ struct TrackEditSheet: View {
                         TextField("Add tag...", text: $newTag)
                             .autocorrectionDisabled()
                             .textInputAutocapitalization(.never)
-                            .onSubmit {
-                                if !newTag.isEmpty {
-                                    Task { await addTag(newTag) }
-                                }
-                            }
-                        if !newTag.isEmpty {
-                            Button {
-                                Task { await addTag(newTag) }
-                            } label: {
-                                Image(systemName: "plus.circle.fill")
-                                    .foregroundStyle(Color.accentOrange)
-                            }
+                            .onSubmit { submitTag() }
+                        Button {
+                            submitTag()
+                        } label: {
+                            Image(systemName: "plus.circle.fill")
+                                .foregroundStyle(newTag.isEmpty ? .gray : Color.accentOrange)
                         }
-                        if tagSaved {
-                            Image(systemName: "checkmark.circle.fill")
-                                .foregroundStyle(.green)
-                                .transition(.scale)
-                        }
+                        .disabled(newTag.isEmpty)
                     }
-                    if !(currentTags ?? []).isEmpty {
-                        ScrollView(.horizontal, showsIndicators: false) {
-                            HStack(spacing: 6) {
-                                ForEach(currentTags ?? [], id: \.self) { tag in
-                                    HStack(spacing: 4) {
-                                        Text("#\(tag)")
-                                            .font(.system(size: 12, weight: .medium))
-                                        Button {
-                                            Task { await removeTag(tag) }
-                                        } label: {
-                                            Image(systemName: "xmark.circle.fill")
-                                                .font(.system(size: 12))
-                                        }
-                                    }
-                                    .padding(.horizontal, 8)
-                                    .padding(.vertical, 4)
-                                    .background(Color.accentOrange.opacity(0.15))
-                                    .foregroundStyle(Color.accentOrange)
-                                    .cornerRadius(8)
-                                }
+                    ForEach(currentTags ?? [], id: \.self) { tag in
+                        HStack {
+                            Text("#\(tag)")
+                                .font(.system(size: 13, weight: .medium))
+                                .foregroundStyle(Color.accentOrange)
+                            Spacer()
+                            Button {
+                                Task { await removeTag(tag) }
+                            } label: {
+                                Image(systemName: "trash")
+                                    .font(.system(size: 12))
+                                    .foregroundStyle(.red.opacity(0.7))
                             }
                         }
                     }
@@ -926,6 +908,12 @@ struct TrackEditSheet: View {
         } catch {
             print("[Edit] Genre save FAILED: \(error)")
         }
+    }
+
+    func submitTag() {
+        let text = newTag
+        guard !text.trimmingCharacters(in: .whitespaces).isEmpty else { return }
+        Task { await addTag(text) }
     }
 
     func addTag(_ tag: String) async {
