@@ -281,7 +281,7 @@ struct TracksView: View {
 
                     // Cover Flow carousel
                     if !player.tracks.isEmpty && player.selectedGenre == nil && player.searchQuery.isEmpty {
-                        CoverFlowView(tracks: Array(player.tracks.prefix(20)))
+                        CoverFlowView(tracks: Array(player.tracks.shuffled().prefix(20)))
                             .padding(.bottom, 12)
                     }
 

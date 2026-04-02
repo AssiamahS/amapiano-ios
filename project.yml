@@ -12,10 +12,9 @@ targets:
     type: application
     platform: iOS
     sources:
-      - Amapiano/Sources
-    resources:
-      - Amapiano/Resources
-      - Amapiano/Resources/Assets.xcassets
+      - path: Amapiano
+        excludes:
+          - "**/*.xcodeproj"
     settings:
       PRODUCT_BUNDLE_IDENTIFIER: com.djsly.amapiano
       INFOPLIST_FILE: Amapiano/Resources/Info.plist
