@@ -601,6 +601,9 @@ struct TrackEditSheet: View {
     @State private var artist: String
     @State private var saving = false
     @State private var addedToPlaylist: String?
+    @State private var showNewPlaylist = false
+    @State private var newPlaylistName = ""
+    @State private var exportedToSerato = false
 
     init(track: Track) {
         self.track = track
@@ -652,36 +655,73 @@ struct TrackEditSheet: View {
                     .foregroundStyle(Color.accentOrange)
                 }
 
-                Section("Actions") {
-                    if player.playlists.isEmpty {
-                        Text("No playlists yet")
-                            .foregroundStyle(.tertiary)
-                    } else {
-                        ForEach(player.playlists) { pl in
-                            Button {
-                                Task {
-                                    try? await APIClient.shared.addTrackToPlaylist(
-                                        playlistId: pl.id, trackId: track.id
-                                    )
-                                    addedToPlaylist = pl.name
-                                    DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
-                                        addedToPlaylist = nil
-                                    }
+                Section("Add to Playlist") {
+                    // Create new playlist with this track
+                    Button {
+                        showNewPlaylist = true
+                    } label: {
+                        HStack {
+                            Image(systemName: "plus.circle.fill")
+                                .foregroundStyle(Color.accentOrange)
+                            Text("New Playlist...")
+                                .foregroundStyle(Color.accentOrange)
+                        }
+                    }
+
+                    ForEach(player.playlists) { pl in
+                        Button {
+                            Task {
+                                try? await APIClient.shared.addTrackToPlaylist(
+                                    playlistId: pl.id, trackId: track.id
+                                )
+                                addedToPlaylist = pl.name
+                                await player.loadPlaylists()
+                                DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+                                    addedToPlaylist = nil
                                 }
-                            } label: {
-                                HStack {
-                                    Image(systemName: "plus.circle")
-                                        .foregroundStyle(Color.accentOrange)
-                                    Text(pl.name)
-                                    Spacer()
-                                    if addedToPlaylist == pl.name {
-                                        Image(systemName: "checkmark")
-                                            .foregroundStyle(.green)
-                                    }
-                                    Text("\(pl.count ?? 0) tracks")
-                                        .font(.system(size: 12))
-                                        .foregroundStyle(.tertiary)
+                            }
+                        } label: {
+                            HStack {
+                                Image(systemName: "music.note.list")
+                                    .foregroundStyle(.secondary)
+                                Text(pl.name)
+                                Spacer()
+                                if addedToPlaylist == pl.name {
+                                    Image(systemName: "checkmark")
+                                        .foregroundStyle(.green)
                                 }
+                                Text("\(pl.count ?? 0)")
+                                    .font(.system(size: 12))
+                                    .foregroundStyle(.tertiary)
+                            }
+                        }
+                    }
+                }
+
+                Section("Serato") {
+                    Button {
+                        Task {
+                            // Create a playlist with just this track and export to Serato
+                            let name = "\(track.artist) - \(track.title)"
+                            let pid = try? await APIClient.shared.createPlaylist(name: name, trackIds: [track.id])
+                            if let pid, !pid.isEmpty {
+                                _ = try? await APIClient.shared.exportToSerato(playlistId: pid)
+                                exportedToSerato = true
+                                await player.loadPlaylists()
+                                DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+                                    exportedToSerato = false
+                                }
+                            }
+                        }
+                    } label: {
+                        HStack {
+                            Image(systemName: "square.and.arrow.up")
+                                .foregroundStyle(Color.accentOrange)
+                            Text("Export as Serato Crate")
+                            Spacer()
+                            if exportedToSerato {
+                                Image(systemName: "checkmark")
+                                    .foregroundStyle(.green)
                             }
                         }
                     }
@@ -704,6 +744,26 @@ struct TrackEditSheet: View {
         }
         .presentationDetents([.medium, .large])
         .preferredColorScheme(.dark)
+        .alert("New Playlist", isPresented: $showNewPlaylist) {
+            TextField("Playlist name", text: $newPlaylistName)
+            Button("Create & Add") {
+                guard !newPlaylistName.isEmpty else { return }
+                Task {
+                    let pid = try? await APIClient.shared.createPlaylist(
+                        name: newPlaylistName, trackIds: [track.id]
+                    )
+                    if pid != nil {
+                        addedToPlaylist = newPlaylistName
+                        await player.loadPlaylists()
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+                            addedToPlaylist = nil
+                        }
+                    }
+                    newPlaylistName = ""
+                }
+            }
+            Button("Cancel", role: .cancel) { newPlaylistName = "" }
+        }
     }
 
     func save() async {
