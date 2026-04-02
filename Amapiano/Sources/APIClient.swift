@@ -73,6 +73,15 @@ class APIClient {
         _ = try await localSession.data(for: req)
     }
 
+    func updateTags(id: String, tags: [String]) async throws {
+        guard let url = url("/api/tracks/\(id)") else { return }
+        var req = URLRequest(url: url)
+        req.httpMethod = "PATCH"
+        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        req.httpBody = try JSONSerialization.data(withJSONObject: ["custom_tags": tags])
+        _ = try await localSession.data(for: req)
+    }
+
     func addTrackToPlaylist(playlistId: String, trackId: String) async throws {
         guard let url = url("/api/playlists/\(playlistId)") else { return }
         var req = URLRequest(url: url)

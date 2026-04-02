@@ -629,12 +629,16 @@ struct TrackEditSheet: View {
     @State private var seratoCrates: [APIClient.SeratoCrate] = []
     @State private var addedToCrate: String?
     @State private var genreSaved = false
+    @State private var newTag = ""
+    @State private var tagSaved = false
+    @State private var currentTags: [String]?
 
     init(track: Track) {
         self.track = track
         _genre = State(initialValue: track.genre)
         _title = State(initialValue: track.title)
         _artist = State(initialValue: track.artist)
+        _currentTags = State(initialValue: track.customTags)
     }
 
     var body: some View {
@@ -719,6 +723,45 @@ struct TrackEditSheet: View {
                         }
                     }
                     .foregroundStyle(Color.accentOrange)
+                }
+
+                Section("Tags") {
+                    HStack {
+                        TextField("Add tag...", text: $newTag)
+                            .autocorrectionDisabled()
+                            .textInputAutocapitalization(.never)
+                            .onSubmit {
+                                if !newTag.isEmpty {
+                                    Task { await addTag(newTag) }
+                                }
+                            }
+                        if tagSaved {
+                            Image(systemName: "checkmark.circle.fill")
+                                .foregroundStyle(.green)
+                                .transition(.scale)
+                        }
+                    }
+                    if let tags = currentTags, !tags.isEmpty {
+                        FlowLayout(spacing: 6) {
+                            ForEach(tags, id: \.self) { tag in
+                                HStack(spacing: 4) {
+                                    Text("#\(tag)")
+                                        .font(.system(size: 12, weight: .medium))
+                                    Button {
+                                        Task { await removeTag(tag) }
+                                    } label: {
+                                        Image(systemName: "xmark")
+                                            .font(.system(size: 8, weight: .bold))
+                                    }
+                                }
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 4)
+                                .background(Color.accentOrange.opacity(0.15))
+                                .foregroundStyle(Color.accentOrange)
+                                .cornerRadius(8)
+                            }
+                        }
+                    }
                 }
 
                 Section("Add to Playlist") {
@@ -867,6 +910,32 @@ struct TrackEditSheet: View {
             await player.loadGenres()
             genreSaved = true
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { genreSaved = false }
+        } catch {}
+    }
+
+    func addTag(_ tag: String) async {
+        let trimmed = tag.trimmingCharacters(in: .whitespaces).lowercased()
+        guard !trimmed.isEmpty else { return }
+        var tags = currentTags ?? []
+        guard !tags.contains(trimmed) else { newTag = ""; return }
+        tags.append(trimmed)
+        do {
+            try await APIClient.shared.updateTags(id: track.id, tags: tags)
+            currentTags = tags
+            newTag = ""
+            tagSaved = true
+            await player.loadTracks()
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { tagSaved = false }
+        } catch {}
+    }
+
+    func removeTag(_ tag: String) async {
+        var tags = currentTags ?? []
+        tags.removeAll { $0 == tag }
+        do {
+            try await APIClient.shared.updateTags(id: track.id, tags: tags)
+            currentTags = tags
+            await player.loadTracks()
         } catch {}
     }
 
@@ -1607,6 +1676,38 @@ struct FlagBadge: View {
             .frame(width: 18, height: 16)
             .background(bg)
             .cornerRadius(4)
+    }
+}
+
+// MARK: - Flow Layout
+struct FlowLayout: Layout {
+    var spacing: CGFloat = 6
+
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        let maxWidth = proposal.width ?? .infinity
+        var x: CGFloat = 0, y: CGFloat = 0, rowHeight: CGFloat = 0
+        for sub in subviews {
+            let size = sub.sizeThatFits(.unspecified)
+            if x + size.width > maxWidth && x > 0 {
+                x = 0; y += rowHeight + spacing; rowHeight = 0
+            }
+            x += size.width + spacing
+            rowHeight = max(rowHeight, size.height)
+        }
+        return CGSize(width: maxWidth, height: y + rowHeight)
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        var x = bounds.minX, y = bounds.minY, rowHeight: CGFloat = 0
+        for sub in subviews {
+            let size = sub.sizeThatFits(.unspecified)
+            if x + size.width > bounds.maxX && x > bounds.minX {
+                x = bounds.minX; y += rowHeight + spacing; rowHeight = 0
+            }
+            sub.place(at: CGPoint(x: x, y: y), proposal: .unspecified)
+            x += size.width + spacing
+            rowHeight = max(rowHeight, size.height)
+        }
     }
 }
 
