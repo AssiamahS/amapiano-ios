@@ -19,6 +19,7 @@ class PlayerViewModel: ObservableObject {
     @Published var isLoading = false
     @Published var isConnected = false
     @Published var errorMessage: String?
+    @Published var scrollToTrackId: String?
 
     enum RepeatMode { case off, all, one }
 

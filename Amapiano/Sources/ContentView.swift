@@ -239,6 +239,7 @@ struct TracksView: View {
 
     var body: some View {
         NavigationStack {
+            ScrollViewReader { scrollProxy in
             ScrollView {
                 VStack(spacing: 0) {
                     // Search bar
@@ -303,6 +304,7 @@ struct TracksView: View {
                         LazyVStack(spacing: 0) {
                             ForEach(player.tracks) { track in
                                 TrackRow(track: track)
+                                    .id(track.id)
                                     .onTapGesture {
                                         player.play(track: track, from: player.tracks)
                                     }
@@ -326,6 +328,15 @@ struct TracksView: View {
                 }
                 .padding(.bottom, 120)
             }
+            .onChange(of: player.scrollToTrackId) { _, id in
+                if let id {
+                    withAnimation {
+                        scrollProxy.scrollTo(id, anchor: .center)
+                    }
+                    player.scrollToTrackId = nil
+                }
+            }
+            } // ScrollViewReader
             .navigationTitle("Amapiano")
             .refreshable { await player.loadTracks() }
         }
@@ -1189,8 +1200,11 @@ struct MiniPlayer: View {
             }
             .background(.ultraThinMaterial)
             .onTapGesture { showFullPlayer = true }
-            .fullScreenCover(isPresented: $showFullPlayer) {
+            .sheet(isPresented: $showFullPlayer) {
                 FullPlayerView(isPresented: $showFullPlayer)
+                    .presentationDetents([.large])
+                    .presentationDragIndicator(.visible)
+                    .interactiveDismissDisabled(false)
             }
         }
     }
@@ -1200,7 +1214,7 @@ struct MiniPlayer: View {
 struct FullPlayerView: View {
     @Binding var isPresented: Bool
     @EnvironmentObject var player: PlayerViewModel
-    @State private var dragOffset: CGFloat = 0
+    @State private var scrollToTrackId: String?
 
     var body: some View {
         VStack(spacing: 0) {
@@ -1250,6 +1264,10 @@ struct FullPlayerView: View {
                         .foregroundStyle(.secondary)
                 }
                 .padding(.horizontal, 24)
+                .onLongPressGesture {
+                    player.scrollToTrackId = track.id
+                    isPresented = false
+                }
 
                 Spacer().frame(height: 28)
 
@@ -1300,29 +1318,6 @@ struct FullPlayerView: View {
 
             Spacer()
         }
-        .offset(y: dragOffset)
-        .opacity(dragOffset > 0 ? Double(1 - (dragOffset / 400)) : 1)
-        .gesture(
-            DragGesture()
-                .onChanged { value in
-                    if value.translation.height > 0 {
-                        dragOffset = value.translation.height
-                    }
-                }
-                .onEnded { value in
-                    if value.translation.height > 100 {
-                        withAnimation(.easeOut(duration: 0.25)) {
-                            dragOffset = UIScreen.main.bounds.height
-                        }
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
-                            isPresented = false
-                            dragOffset = 0
-                        }
-                    } else {
-                        withAnimation(.spring(response: 0.3)) { dragOffset = 0 }
-                    }
-                }
-        )
         .background(Color(uiColor: .systemBackground))
         .preferredColorScheme(.dark)
     }
