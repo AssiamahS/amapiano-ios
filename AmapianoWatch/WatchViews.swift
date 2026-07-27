@@ -172,6 +172,7 @@ struct WatchCrateDetailView: View {
     @State private var tracks: [(id: String, title: String, artist: String)] = []
     @State private var showRename = false
     @State private var newName = ""
+    @State private var editingTrack: EditableSong?
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
@@ -184,6 +185,13 @@ struct WatchCrateDetailView: View {
                     VStack(alignment: .leading, spacing: 2) {
                         Text(track.title).font(.footnote).lineLimit(1)
                         Text(track.artist).font(.caption2).foregroundStyle(.secondary).lineLimit(1)
+                    }
+                }
+                .contextMenu {
+                    Button {
+                        editingTrack = EditableSong(id: track.id, title: track.title, artist: track.artist)
+                    } label: {
+                        Label("Edit Song", systemImage: "pencil")
                     }
                 }
             }
@@ -224,6 +232,12 @@ struct WatchCrateDetailView: View {
         }
         .navigationTitle(crate.leafName)
         .task { await load() }
+        .sheet(item: $editingTrack) { song in
+            WatchSongEditView(song: song) {
+                editingTrack = nil
+                Task { await load() }
+            }
+        }
         .sheet(isPresented: $showRename) {
             VStack {
                 TextField("Crate name", text: $newName)
@@ -259,6 +273,47 @@ struct WatchCrateDetailView: View {
              title: $0["title"] as? String ?? "?",
              artist: $0["artist"] as? String ?? "")
         }
+    }
+}
+
+struct EditableSong: Identifiable {
+    let id: String
+    var title: String
+    var artist: String
+}
+
+/// Swipe-type (QuickPath works on Ultra 2) or dictate new song metadata.
+struct WatchSongEditView: View {
+    @State var song: EditableSong
+    var onSaved: () -> Void
+    @State private var saving = false
+
+    var body: some View {
+        ScrollView {
+            VStack(spacing: 8) {
+                TextField("Title", text: $song.title)
+                TextField("Artist", text: $song.artist)
+                Button {
+                    Task {
+                        saving = true
+                        _ = try? await WatchSession.shared.api(
+                            "PATCH", "/api/tracks/\(song.id)",
+                            body: ["title": song.title, "artist": song.artist])
+                        onSaved()
+                    }
+                } label: {
+                    if saving {
+                        ProgressView()
+                    } else {
+                        Label("Save", systemImage: "checkmark")
+                    }
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(.orange)
+                .disabled(saving || song.title.isEmpty)
+            }
+        }
+        .navigationTitle("Edit Song")
     }
 }
 
