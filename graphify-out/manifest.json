@@ -1,0 +1,37 @@
+{
+  "Amapiano/Resources/Assets.xcassets/AppIcon.appiconset/Contents.json": {
+    "mtime": 1775120442.7614164,
+    "ast_hash": "cc0fa974a2eb9d06669de8f7d07455fc",
+    "semantic_hash": "cc0fa974a2eb9d06669de8f7d07455fc"
+  },
+  "Amapiano/Resources/Assets.xcassets/Contents.json": {
+    "mtime": 1775120447.7549078,
+    "ast_hash": "9deb2ada1cc834bbebf8bbad9c8978a1",
+    "semantic_hash": "9deb2ada1cc834bbebf8bbad9c8978a1"
+  },
+  "Amapiano/Sources/APIClient.swift": {
+    "mtime": 1775113200.2567372,
+    "ast_hash": "eb158fe5ec8f6f7d921b05e8d6757450",
+    "semantic_hash": "eb158fe5ec8f6f7d921b05e8d6757450"
+  },
+  "Amapiano/Sources/AmapianoApp.swift": {
+    "mtime": 1775084418.3694308,
+    "ast_hash": "05480ec438ba5119873984a8a83f85a9",
+    "semantic_hash": "05480ec438ba5119873984a8a83f85a9"
+  },
+  "Amapiano/Sources/ContentView.swift": {
+    "mtime": 1775422645.8797965,
+    "ast_hash": "9ee340153f8b61d5e57e5205e812018b",
+    "semantic_hash": "9ee340153f8b61d5e57e5205e812018b"
+  },
+  "Amapiano/Sources/Models.swift": {
+    "mtime": 1775112835.3227112,
+    "ast_hash": "a86c8bd720dd67796e99d7b207380cae",
+    "semantic_hash": "a86c8bd720dd67796e99d7b207380cae"
+  },
+  "Amapiano/Sources/PlayerViewModel.swift": {
+    "mtime": 1775112362.974677,
+    "ast_hash": "1563c582e6df4a4416028027487e18a9",
+    "semantic_hash": "1563c582e6df4a4416028027487e18a9"
+  }
+}

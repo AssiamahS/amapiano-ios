@@ -4,7 +4,8 @@ class APIClient {
     static let shared = APIClient()
 
     var baseURL: String {
-        get { UserDefaults.standard.string(forKey: "serverURL") ?? "" }
+        get { UserDefaults.standard.string(forKey: "serverURL")
+              ?? "http://saints-macbook-air.tail40af16.ts.net:8766" }
         set { UserDefaults.standard.set(newValue, forKey: "serverURL") }
     }
 

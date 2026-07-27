@@ -1,0 +1,345 @@
+{
+  "communities": {
+    "0": [
+      "amapiano_sources_contentview_swift_bool",
+      "amapiano_sources_contentview_swift_double",
+      "amapiano_sources_contentview_swift_int",
+      "amapiano_sources_contentview_swift_playlist",
+      "amapiano_sources_contentview_swift_string",
+      "amapiano_sources_contentview_swift_track",
+      "color",
+      "playerviewmodel",
+      "playlistdetail",
+      "sources_contentview",
+      "sources_contentview_contentview",
+      "sources_contentview_contentview_smartconnect",
+      "sources_contentview_coverflowview",
+      "sources_contentview_cratedetailview",
+      "sources_contentview_customtabbar",
+      "sources_contentview_customtabbar_tabbutton",
+      "sources_contentview_downloadsview_statuscolor",
+      "sources_contentview_flagbadge",
+      "sources_contentview_formattime",
+      "sources_contentview_fullplayerview",
+      "sources_contentview_gridcard",
+      "sources_contentview_maintabview",
+      "sources_contentview_miniplayer",
+      "sources_contentview_setupview",
+      "sources_contentview_setupview_autoconnect",
+      "sources_contentview_setupview_testandconnect",
+      "sources_contentview_trackeditsheet",
+      "sources_contentview_trackeditsheet_addtag",
+      "sources_contentview_trackeditsheet_init",
+      "sources_contentview_trackeditsheet_removetag",
+      "sources_contentview_trackeditsheet_save",
+      "sources_contentview_trackeditsheet_savegenre",
+      "sources_contentview_trackeditsheet_spotifylookup",
+      "sources_contentview_trackeditsheet_submittag",
+      "sources_contentview_trackrow",
+      "sources_contentview_tracksview",
+      "sources_contentview_tracksview_genrechip",
+      "sources_contentview_viewmode_grid",
+      "sources_contentview_viewmode_list",
+      "view",
+      "viewmode"
+    ],
+    "1": [
+      "amapiano_sources_apiclient_swift_bool",
+      "amapiano_sources_apiclient_swift_string",
+      "amapiano_sources_apiclient_swift_track",
+      "sources_apiclient_apiclient",
+      "sources_apiclient_apiclient_addtocrate",
+      "sources_apiclient_apiclient_addtracktoplaylist",
+      "sources_apiclient_apiclient_audiourl",
+      "sources_apiclient_apiclient_coverurl",
+      "sources_apiclient_apiclient_createcrate",
+      "sources_apiclient_apiclient_createplaylist",
+      "sources_apiclient_apiclient_deleteplaylist",
+      "sources_apiclient_apiclient_exporttoserato",
+      "sources_apiclient_apiclient_fetchcratetracks",
+      "sources_apiclient_apiclient_fetchdownloads",
+      "sources_apiclient_apiclient_fetchdownloadstatus",
+      "sources_apiclient_apiclient_fetchplaylist",
+      "sources_apiclient_apiclient_fetchseratocrates",
+      "sources_apiclient_apiclient_fetchtags",
+      "sources_apiclient_apiclient_fetchtracks",
+      "sources_apiclient_apiclient_importseratocrate",
+      "sources_apiclient_apiclient_removefromcrate",
+      "sources_apiclient_apiclient_renamecrate",
+      "sources_apiclient_apiclient_reordercrate",
+      "sources_apiclient_apiclient_resolvename",
+      "sources_apiclient_apiclient_spotifygenrelookup",
+      "sources_apiclient_apiclient_startdownload",
+      "sources_apiclient_apiclient_testconnection",
+      "sources_apiclient_apiclient_updatetags",
+      "sources_apiclient_apiclient_updatetrack",
+      "tagsresponse",
+      "timeinterval",
+      "url",
+      "urlsession"
+    ],
+    "2": [
+      "amapiano_sources_playerviewmodel_swift_double",
+      "amapiano_sources_playerviewmodel_swift_playlist",
+      "amapiano_sources_playerviewmodel_swift_string",
+      "amapiano_sources_playerviewmodel_swift_track",
+      "any",
+      "avplayer",
+      "observableobject",
+      "repeatmode",
+      "sources_playerviewmodel",
+      "sources_playerviewmodel_playerviewmodel",
+      "sources_playerviewmodel_playerviewmodel_connect",
+      "sources_playerviewmodel_playerviewmodel_cyclerepeat",
+      "sources_playerviewmodel_playerviewmodel_filterbygenre",
+      "sources_playerviewmodel_playerviewmodel_init",
+      "sources_playerviewmodel_playerviewmodel_loadgenres",
+      "sources_playerviewmodel_playerviewmodel_loadplaylists",
+      "sources_playerviewmodel_playerviewmodel_loadtracks",
+      "sources_playerviewmodel_playerviewmodel_next",
+      "sources_playerviewmodel_playerviewmodel_play",
+      "sources_playerviewmodel_playerviewmodel_previous",
+      "sources_playerviewmodel_playerviewmodel_seek",
+      "sources_playerviewmodel_playerviewmodel_setupaudiosession",
+      "sources_playerviewmodel_playerviewmodel_setupremotecommands",
+      "sources_playerviewmodel_playerviewmodel_toggleplaypause",
+      "sources_playerviewmodel_playerviewmodel_toggleshuffle",
+      "sources_playerviewmodel_playerviewmodel_updatenowplaying",
+      "sources_playerviewmodel_repeatmode_all",
+      "sources_playerviewmodel_repeatmode_off",
+      "sources_playerviewmodel_repeatmode_one"
+    ],
+    "3": [
+      "amapiano_sources_apiclient_swift_int",
+      "amapiano_sources_models_swift_bool",
+      "amapiano_sources_models_swift_double",
+      "amapiano_sources_models_swift_int",
+      "amapiano_sources_models_swift_string",
+      "codable",
+      "equatable",
+      "identifiable",
+      "sources_apiclient",
+      "sources_apiclient_cratetracksresponse",
+      "sources_apiclient_download",
+      "sources_apiclient_downloadsresponse",
+      "sources_apiclient_seratocrate",
+      "sources_apiclient_seratocratesresponse",
+      "sources_contentview_playlistsview_loadcrates",
+      "sources_models",
+      "sources_models_playlist",
+      "sources_models_playlistdetail",
+      "sources_models_playlistsresponse",
+      "sources_models_tagsresponse",
+      "sources_models_track",
+      "sources_models_tracksresponse"
+    ],
+    "4": [
+      "codingkey",
+      "sources_apiclient_codingkeys",
+      "sources_apiclient_codingkeys_error",
+      "sources_apiclient_codingkeys_id",
+      "sources_apiclient_codingkeys_name",
+      "sources_apiclient_codingkeys_newtracks",
+      "sources_apiclient_codingkeys_progress",
+      "sources_apiclient_codingkeys_status",
+      "sources_models_codingkeys",
+      "sources_models_codingkeys_album",
+      "sources_models_codingkeys_artist",
+      "sources_models_codingkeys_cover",
+      "sources_models_codingkeys_customtags",
+      "sources_models_codingkeys_duration",
+      "sources_models_codingkeys_flags",
+      "sources_models_codingkeys_genre",
+      "sources_models_codingkeys_genres",
+      "sources_models_codingkeys_id",
+      "sources_models_codingkeys_path",
+      "sources_models_codingkeys_title"
+    ],
+    "5": [
+      "icon_appicon_1024",
+      "projectyml_amapiano_project",
+      "projectyml_amapiano_target",
+      "projectyml_appicon",
+      "projectyml_assets_xcassets",
+      "projectyml_bundle_id",
+      "projectyml_development_team",
+      "projectyml_flask_api",
+      "projectyml_info_plist",
+      "projectyml_local_network_usage",
+      "readme_amapiano_ios_app",
+      "readme_amapiano_mcp",
+      "readme_amapiano_server_mjs",
+      "readme_commit_8fc3538",
+      "readme_crate_42",
+      "readme_mcp_json",
+      "readme_serato_mcp",
+      "readme_serato_server_mjs",
+      "readme_serato_subcrates_dir"
+    ],
+    "6": [
+      "cgfloat",
+      "cgrect",
+      "cgsize",
+      "layout",
+      "proposedviewsize",
+      "sources_contentview_flowlayout",
+      "sources_contentview_flowlayout_placesubviews",
+      "sources_contentview_flowlayout_sizethatfits",
+      "subviews"
+    ],
+    "7": [
+      "apiclient",
+      "sources_contentview_downloadsview",
+      "sources_contentview_downloadsview_loaddownloads",
+      "sources_contentview_downloadsview_resolvename",
+      "sources_contentview_downloadsview_startdownload",
+      "sources_contentview_downloadsview_startpolling",
+      "timer"
+    ],
+    "8": [
+      "appicon_appiconset_contents",
+      "appicon_appiconset_contents_images",
+      "appicon_appiconset_contents_info",
+      "appicon_appiconset_contents_info_author",
+      "appicon_appiconset_contents_info_version"
+    ],
+    "9": [
+      "app",
+      "scene",
+      "sources_amapianoapp",
+      "sources_amapianoapp_amapianoapp"
+    ],
+    "10": [
+      "assets_xcassets_contents",
+      "assets_xcassets_contents_info",
+      "assets_xcassets_contents_info_author",
+      "assets_xcassets_contents_info_version"
+    ]
+  },
+  "cohesion": {
+    "0": 0.11097560975609756,
+    "1": 0.15151515151515152,
+    "2": 0.12315270935960591,
+    "3": 0.19047619047619047,
+    "4": 0.1,
+    "5": 0.16374269005847952,
+    "6": 0.3055555555555556,
+    "7": 0.38095238095238093,
+    "8": 0.4,
+    "9": 0.5,
+    "10": 0.5
+  },
+  "gods": [
+    {
+      "id": "sources_apiclient_apiclient",
+      "label": "APIClient",
+      "degree": 30
+    },
+    {
+      "id": "amapiano_sources_apiclient_swift_string",
+      "label": "String",
+      "degree": 26
+    },
+    {
+      "id": "url",
+      "label": "URL",
+      "degree": 26
+    },
+    {
+      "id": "sources_playerviewmodel_playerviewmodel",
+      "label": "PlayerViewModel",
+      "degree": 25
+    },
+    {
+      "id": "playerviewmodel",
+      "label": "PlayerViewModel",
+      "degree": 14
+    },
+    {
+      "id": "sources_models_codingkeys",
+      "label": "CodingKeys",
+      "degree": 14
+    },
+    {
+      "id": "sources_contentview_trackeditsheet",
+      "label": "TrackEditSheet",
+      "degree": 13
+    },
+    {
+      "id": "sources_models_playlist",
+      "label": "Playlist",
+      "degree": 13
+    },
+    {
+      "id": "amapiano_sources_contentview_swift_string",
+      "label": "String",
+      "degree": 12
+    },
+    {
+      "id": "sources_apiclient_codingkeys",
+      "label": "CodingKeys",
+      "degree": 10
+    }
+  ],
+  "surprises": [
+    {
+      "source": "Amapiano App Icon 1024px (orange/brown 'a' lettermark)",
+      "target": "Amapiano Xcode Target",
+      "source_files": [
+        "Amapiano/Resources/Assets.xcassets/AppIcon.appiconset/icon-1024.png",
+        "project.yml"
+      ],
+      "confidence": "EXTRACTED",
+      "relation": "references",
+      "why": "crosses file types (doc \u2194 image); connects across different repos/directories; peripheral node `Amapiano App Icon 1024px (orange/brown 'a' lettermark)` unexpectedly reaches hub `Amapiano Xcode Target`"
+    },
+    {
+      "source": "Assets.xcassets Resource Bundle",
+      "target": "Amapiano App Icon 1024px (orange/brown 'a' lettermark)",
+      "source_files": [
+        "project.yml",
+        "Amapiano/Resources/Assets.xcassets/AppIcon.appiconset/icon-1024.png"
+      ],
+      "confidence": "EXTRACTED",
+      "relation": "references",
+      "why": "crosses file types (doc \u2194 image); connects across different repos/directories"
+    },
+    {
+      "source": "Amapiano iOS App (Session Log)",
+      "target": "Amapiano XcodeGen Project",
+      "source_files": [
+        "README.md",
+        "project.yml"
+      ],
+      "confidence": "EXTRACTED",
+      "relation": "references",
+      "why": "connects across different repos/directories; peripheral node `Amapiano XcodeGen Project` unexpectedly reaches hub `Amapiano iOS App (Session Log)`"
+    },
+    {
+      "source": "NSLocalNetworkUsageDescription",
+      "target": "Flask Music Server (localhost:8766)",
+      "source_files": [
+        "project.yml",
+        "README.md"
+      ],
+      "confidence": "INFERRED",
+      "relation": "conceptually_related_to",
+      "why": "inferred connection - not explicitly stated in source; connects across different repos/directories"
+    },
+    {
+      "source": "Git Commit 8fc3538",
+      "target": "Assets.xcassets Resource Bundle",
+      "source_files": [
+        "README.md",
+        "project.yml"
+      ],
+      "confidence": "EXTRACTED",
+      "relation": "references",
+      "why": "connects across different repos/directories"
+    }
+  ],
+  "tokens": {
+    "input": 41264,
+    "output": 3179
+  }
+}

@@ -5,8 +5,11 @@ options:
     iOS: "17.0"
   xcodeVersion: "16.0"
 settings:
-  SWIFT_VERSION: "5.9"
-  DEVELOPMENT_TEAM: QGMAWHX827
+  base:
+    SWIFT_VERSION: "5.9"
+    DEVELOPMENT_TEAM: QGMAWHX827
+    MARKETING_VERSION: 1.4.1
+    CURRENT_PROJECT_VERSION: 1
 targets:
   Amapiano:
     type: application
@@ -26,15 +29,20 @@ targets:
       properties:
         CFBundleName: Amapiano
         CFBundleDisplayName: Amapiano
-        CFBundleShortVersionString: "1.4"
-        CFBundleVersion: "1"
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        ITSAppUsesNonExemptEncryption: false
         UILaunchScreen: {}
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationPortrait
         UIApplicationSupportsIndirectInputEvents: true
         NSLocalNetworkUsageDescription: "Amapiano needs local network access to connect to your music server."
         NSAppTransportSecurity:
-          NSAllowsArbitraryLoads: true
+          NSAllowsLocalNetworking: true
+          NSExceptionDomains:
+            tail40af16.ts.net:
+              NSIncludesSubdomains: true
+              NSExceptionAllowsInsecureHTTPLoads: true
         NSBonjourServices:
           - _http._tcp
         UIBackgroundModes:

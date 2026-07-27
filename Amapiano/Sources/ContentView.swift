@@ -1449,8 +1449,8 @@ struct DownloadsView: View {
 
     func startDownload() async {
         downloading = true
-        let name = playlistName.isEmpty ? "Download \(Date().formatted(.dateTime.month().day().hour().minute()))" : playlistName
-        _ = try? await APIClient.shared.startDownload(url: url, name: name)
+        // Pass empty name — server will auto-fetch real playlist/track title from URL
+        _ = try? await APIClient.shared.startDownload(url: url, name: playlistName)
         url = ""
         playlistName = ""
         downloading = false
