@@ -15,6 +15,7 @@ struct RootView: View {
             NowPlayingView()
             UpNextView()
             CratesView()
+            WatchLibraryView()
             WatchSearchView()
         }
         .tabViewStyle(.verticalPage)

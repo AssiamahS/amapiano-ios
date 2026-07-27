@@ -570,6 +570,15 @@ struct TrackRow: View {
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
                 HStack(spacing: 4) {
+                    if let bpm = track.bpm {
+                        Text("\(Int(bpm.rounded())) BPM\(track.key.map { " · \($0)" } ?? "")")
+                            .font(.system(size: 10, weight: .semibold, design: .monospaced))
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 1)
+                            .background(Color.accentOrange.opacity(0.15))
+                            .cornerRadius(6)
+                            .foregroundStyle(Color.accentOrange)
+                    }
                     if !track.genre.isEmpty {
                         Text(track.genre)
                             .font(.system(size: 10, weight: .medium))

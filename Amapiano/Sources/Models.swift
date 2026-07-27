@@ -11,9 +11,11 @@ struct Track: Codable, Identifiable, Equatable {
     let cover: String?
     let customTags: [String]?
     let flags: [String]?
+    let bpm: Double?
+    let key: String?
 
     enum CodingKeys: String, CodingKey {
-        case id, path, title, artist, genre, album, duration, cover, flags
+        case id, path, title, artist, genre, album, duration, cover, flags, bpm, key
         case customTags = "custom_tags"
     }
 

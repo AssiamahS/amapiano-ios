@@ -47,8 +47,10 @@ final class WatchBridge: NSObject, WCSessionDelegate {
                                      trackId: message["trackId"] as? String)
                 replyHandler(self.stateSnapshot())
             case "queue":
-                let next = (self.player?.upNext ?? []).map {
-                    ["id": $0.id, "title": $0.title, "artist": $0.artist]
+                let next = (self.player?.upNext ?? []).map { t -> [String: Any] in
+                    var d: [String: Any] = ["id": t.id, "title": t.title, "artist": t.artist]
+                    if let bpm = t.bpm { d["bpm"] = bpm }
+                    return d
                 }
                 replyHandler(["tracks": next])
             case "jumpQueue":
@@ -57,6 +59,10 @@ final class WatchBridge: NSObject, WCSessionDelegate {
             case "playSearch":
                 await self.playSearch(query: message["query"] as? String ?? "",
                                       trackId: message["trackId"] as? String ?? "")
+                replyHandler(self.stateSnapshot())
+            case "playLibrary":
+                await self.playLibrary(genre: message["genre"] as? String ?? "",
+                                       trackId: message["trackId"] as? String ?? "")
                 replyHandler(self.stateSnapshot())
             case "api":
                 let reply = await self.proxy(message)
@@ -95,6 +101,14 @@ final class WatchBridge: NSObject, WCSessionDelegate {
     private func playSearch(query: String, trackId: String) async {
         guard let player, !trackId.isEmpty else { return }
         guard let tracks = try? await APIClient.shared.fetchTracks(query: query.isEmpty ? nil : query),
+              let track = tracks.first(where: { $0.id == trackId }) else { return }
+        player.play(track: track, from: tracks)
+    }
+
+    @MainActor
+    private func playLibrary(genre: String, trackId: String) async {
+        guard let player, !trackId.isEmpty else { return }
+        guard let tracks = try? await APIClient.shared.fetchTracks(genre: genre.isEmpty ? nil : genre),
               let track = tracks.first(where: { $0.id == trackId }) else { return }
         player.play(track: track, from: tracks)
     }

@@ -120,10 +120,53 @@ struct NowPlayingView: View {
     }
 }
 
+// MARK: - Shared track row (title, artist, BPM badge)
+
+struct WatchTrack: Identifiable, Hashable {
+    let id: String
+    let title: String
+    let artist: String
+    let bpm: Double?
+
+    init?(_ dict: [String: Any]) {
+        guard let id = dict["id"] as? String, !id.isEmpty else { return nil }
+        self.id = id
+        title = dict["title"] as? String ?? "?"
+        artist = dict["artist"] as? String ?? ""
+        bpm = dict["bpm"] as? Double
+    }
+}
+
+struct WatchTrackRow: View {
+    let track: WatchTrack
+    var playing = false
+
+    var body: some View {
+        HStack(spacing: 6) {
+            if playing {
+                Image(systemName: "speaker.wave.2.fill")
+                    .font(.caption2)
+                    .foregroundStyle(.orange)
+            }
+            VStack(alignment: .leading, spacing: 2) {
+                Text(track.title).font(.footnote).lineLimit(1)
+                HStack(spacing: 4) {
+                    if let bpm = track.bpm {
+                        Text("\(Int(bpm.rounded()))")
+                            .font(.system(size: 10, design: .monospaced))
+                            .foregroundStyle(.orange)
+                    }
+                    Text(track.artist).font(.caption2).foregroundStyle(.secondary).lineLimit(1)
+                }
+            }
+        }
+    }
+}
+
 // MARK: - Up Next (the phone's play queue after the current song)
 
 struct UpNextView: View {
-    @State private var tracks: [(id: String, title: String, artist: String)] = []
+    @State private var tracks: [WatchTrack] = []
     @State private var loaded = false
 
     var body: some View {
@@ -134,7 +177,7 @@ struct UpNextView: View {
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                 }
-                ForEach(tracks, id: \.id) { track in
+                ForEach(tracks) { track in
                     Button {
                         WKInterfaceDevice.current().play(.start)
                         Task {
@@ -143,10 +186,7 @@ struct UpNextView: View {
                             await load()
                         }
                     } label: {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(track.title).font(.footnote).lineLimit(1)
-                            Text(track.artist).font(.caption2).foregroundStyle(.secondary).lineLimit(1)
-                        }
+                        WatchTrackRow(track: track)
                     }
                 }
             }
@@ -158,12 +198,107 @@ struct UpNextView: View {
     private func load() async {
         guard let reply = try? await WatchSession.shared.request(["action": "queue"]) else { return }
         let list = reply["tracks"] as? [[String: Any]] ?? []
-        tracks = list.map {
-            (id: $0["id"] as? String ?? "",
-             title: $0["title"] as? String ?? "?",
-             artist: $0["artist"] as? String ?? "")
-        }
+        tracks = list.compactMap(WatchTrack.init)
         loaded = true
+    }
+}
+
+// MARK: - Library (browse by genre, like Spotify's downloads section)
+
+struct WatchLibraryView: View {
+    @State private var genres: [String] = []
+    @State private var errorLine: String?
+
+    var body: some View {
+        NavigationStack {
+            List {
+                if let errorLine {
+                    Button {
+                        Task { await load() }
+                    } label: {
+                        Label(errorLine, systemImage: "arrow.clockwise")
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                NavigationLink(value: "") {
+                    Label("All Music", systemImage: "music.note.list")
+                }
+                ForEach(genres, id: \.self) { genre in
+                    NavigationLink(value: genre) {
+                        Text(genre).lineLimit(1)
+                    }
+                }
+            }
+            .navigationTitle("Library")
+            .navigationDestination(for: String.self) { genre in
+                WatchGenreTracksView(genre: genre)
+            }
+            .task { await load() }
+        }
+    }
+
+    private func load() async {
+        do {
+            let json = try await WatchSession.shared.api("GET", "/api/tags") as? [String: Any]
+            genres = json?["genres"] as? [String] ?? []
+            errorLine = nil
+        } catch {
+            errorLine = "Phone unreachable — tap to retry"
+        }
+    }
+}
+
+struct WatchGenreTracksView: View {
+    let genre: String
+    @State private var tracks: [WatchTrack] = []
+    @State private var total = 0
+    @State private var loading = false
+    @State private var playingTrackId: String?
+    private let pageSize = 50
+
+    var body: some View {
+        List {
+            ForEach(tracks) { track in
+                Button {
+                    playingTrackId = track.id
+                    WKInterfaceDevice.current().play(.start)
+                    Task { _ = try? await WatchSession.shared.request(
+                        ["action": "playLibrary", "genre": genre, "trackId": track.id]) }
+                } label: {
+                    WatchTrackRow(track: track, playing: playingTrackId == track.id)
+                }
+            }
+            if tracks.count < total {
+                Button {
+                    Task { await load(offset: tracks.count) }
+                } label: {
+                    if loading {
+                        HStack { Spacer(); ProgressView(); Spacer() }
+                    } else {
+                        Label("More (\(tracks.count)/\(total))", systemImage: "arrow.down")
+                            .font(.footnote)
+                    }
+                }
+            }
+        }
+        .navigationTitle(genre.isEmpty ? "All Music" : genre)
+        .task { await load(offset: 0) }
+    }
+
+    private func load(offset: Int) async {
+        loading = true
+        defer { loading = false }
+        var path = "/api/tracks?limit=\(pageSize)&offset=\(offset)"
+        if !genre.isEmpty {
+            let g = genre.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? genre
+            path += "&genre=\(g)"
+        }
+        guard let json = try? await WatchSession.shared.api("GET", path) as? [String: Any] else { return }
+        let list = json["tracks"] as? [[String: Any]] ?? []
+        total = json["total"] as? Int ?? 0
+        let page = list.compactMap(WatchTrack.init)
+        tracks = offset == 0 ? page : tracks + page
     }
 }
 
@@ -171,9 +306,10 @@ struct UpNextView: View {
 
 struct WatchSearchView: View {
     @State private var query = ""
-    @State private var results: [(id: String, title: String, artist: String)] = []
+    @State private var results: [WatchTrack] = []
     @State private var searching = false
     @State private var searched = false
+    @State private var playingTrackId: String?
 
     var body: some View {
         NavigationStack {
@@ -185,16 +321,14 @@ struct WatchSearchView: View {
                 } else if searched && results.isEmpty {
                     Text("No matches").font(.footnote).foregroundStyle(.secondary)
                 }
-                ForEach(results, id: \.id) { track in
+                ForEach(results) { track in
                     Button {
+                        playingTrackId = track.id
                         WKInterfaceDevice.current().play(.start)
                         Task { _ = try? await WatchSession.shared.request(
                             ["action": "playSearch", "query": query, "trackId": track.id]) }
                     } label: {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(track.title).font(.footnote).lineLimit(1)
-                            Text(track.artist).font(.caption2).foregroundStyle(.secondary).lineLimit(1)
-                        }
+                        WatchTrackRow(track: track, playing: playingTrackId == track.id)
                     }
                 }
             }
@@ -208,23 +342,20 @@ struct WatchSearchView: View {
         searching = true
         defer { searching = false; searched = true }
         let encoded = q.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? q
+        // limit keeps the proxied reply under the WCSession message size cap
         guard let json = try? await WatchSession.shared.api(
-            "GET", "/api/tracks?q=\(encoded)") as? [String: Any] else {
+            "GET", "/api/tracks?q=\(encoded)&limit=50") as? [String: Any] else {
             results = []
             return
         }
         let list = json["tracks"] as? [[String: Any]] ?? []
-        results = list.map {
-            (id: $0["id"] as? String ?? "",
-             title: $0["title"] as? String ?? "?",
-             artist: $0["artist"] as? String ?? "")
-        }
+        results = list.compactMap(WatchTrack.init)
     }
 }
 
 // MARK: - Crates (browse, play, rename, delete, reorder, move nested)
 
-struct WatchCrate: Identifiable {
+struct WatchCrate: Identifiable, Hashable {
     let name: String
     let count: Int
     var id: String { name }
@@ -239,6 +370,7 @@ struct CratesView: View {
     @State private var crates: [WatchCrate] = []
     @State private var errorLine: String?
     @State private var loading = false
+    @State private var selected: WatchCrate?
 
     var body: some View {
         NavigationStack {
@@ -259,8 +391,10 @@ struct CratesView: View {
                     }
                 }
                 ForEach(crates) { crate in
-                    NavigationLink {
-                        WatchCrateDetailView(crate: crate, allCrates: crates, onChanged: { Task { await load() } })
+                    // Button + navigationDestination instead of NavigationLink:
+                    // links in a reloading List intermittently swallow taps.
+                    Button {
+                        selected = crate
                     } label: {
                         VStack(alignment: .leading, spacing: 2) {
                             Text(crate.leafName).lineLimit(1)
@@ -277,8 +411,10 @@ struct CratesView: View {
                 }
             }
             .navigationTitle("Crates")
+            .navigationDestination(item: $selected) { crate in
+                WatchCrateDetailView(crate: crate, allCrates: crates, onChanged: { Task { await load() } })
+            }
             .task { await load() }
-            .refreshable { await load() }
         }
     }
 
@@ -303,7 +439,7 @@ struct WatchCrateDetailView: View {
     let allCrates: [WatchCrate]
     var onChanged: () -> Void
 
-    @State private var tracks: [(id: String, title: String, artist: String)] = []
+    @State private var tracks: [WatchTrack] = []
     @State private var showRename = false
     @State private var newName = ""
     @State private var editingTrack: EditableSong?
@@ -330,17 +466,7 @@ struct WatchCrateDetailView: View {
                     Task { _ = try? await WatchSession.shared.request(
                         ["action": "playCrate", "name": crate.name, "index": i, "trackId": track.id]) }
                 } label: {
-                    HStack(spacing: 6) {
-                        if playingTrackId == track.id {
-                            Image(systemName: "speaker.wave.2.fill")
-                                .font(.caption2)
-                                .foregroundStyle(.orange)
-                        }
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(track.title).font(.footnote).lineLimit(1)
-                            Text(track.artist).font(.caption2).foregroundStyle(.secondary).lineLimit(1)
-                        }
-                    }
+                    WatchTrackRow(track: track, playing: playingTrackId == track.id)
                 }
                 .contextMenu {
                     Button {
@@ -433,11 +559,7 @@ struct WatchCrateDetailView: View {
         }
         loadError = false
         let list = json["tracks"] as? [[String: Any]] ?? []
-        tracks = list.map {
-            (id: $0["id"] as? String ?? "",
-             title: $0["title"] as? String ?? "?",
-             artist: $0["artist"] as? String ?? "")
-        }
+        tracks = list.compactMap(WatchTrack.init)
     }
 }
 
