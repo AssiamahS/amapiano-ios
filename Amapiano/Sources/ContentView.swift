@@ -1627,6 +1627,15 @@ struct FullPlayerView: View {
                     Text(track.artist)
                         .font(.system(size: 16))
                         .foregroundStyle(.secondary)
+                    if let bpm = track.bpm {
+                        Text("\(Int(bpm.rounded())) BPM\(track.key.map { " · \($0)" } ?? "")")
+                            .font(.system(size: 13, weight: .semibold, design: .monospaced))
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 3)
+                            .background(Capsule().fill(Color.accentOrange.opacity(0.15)))
+                            .foregroundStyle(Color.accentOrange)
+                            .padding(.top, 2)
+                    }
                 }
                 .padding(.horizontal, 24)
                 .onLongPressGesture {

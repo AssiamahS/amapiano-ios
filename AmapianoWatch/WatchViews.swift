@@ -10,6 +10,8 @@ struct NowPlayingView: View {
     @State private var playing = false
     @State private var time: Double = 0
     @State private var duration: Double = 1
+    @State private var bpm: Double = 0
+    @State private var key = ""
     @State private var crownTime: Double = 0
     @State private var scrubbing = false
     private let poll = Timer.publish(every: 1.5, on: .main, in: .common).autoconnect()
@@ -33,6 +35,11 @@ struct NowPlayingView: View {
                     .font(.caption2)
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
+                if bpm > 0 {
+                    Text("\(Int(bpm.rounded())) BPM\(key.isEmpty ? "" : " · \(key)")")
+                        .font(.system(size: 10, weight: .semibold, design: .monospaced))
+                        .foregroundStyle(.orange)
+                }
 
                 ProgressView(value: min(scrubbing ? crownTime : time, duration), total: max(duration, 1))
                     .tint(.orange)
@@ -109,6 +116,8 @@ struct NowPlayingView: View {
         title = reply["title"] as? String ?? ""
         artist = reply["artist"] as? String ?? ""
         playing = reply["playing"] as? Bool ?? false
+        bpm = reply["bpm"] as? Double ?? 0
+        key = reply["key"] as? String ?? ""
         time = reply["time"] as? Double ?? 0
         duration = max(reply["duration"] as? Double ?? 1, 1)
         if !scrubbing { crownTime = time }

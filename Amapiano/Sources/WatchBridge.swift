@@ -76,13 +76,16 @@ final class WatchBridge: NSObject, WCSessionDelegate {
     @MainActor
     private func stateSnapshot() -> [String: Any] {
         guard let player else { return ["playing": false] }
-        return [
+        var snap: [String: Any] = [
             "playing": player.isPlaying,
             "title": player.currentTrack?.title ?? "",
             "artist": player.currentTrack?.artist ?? "",
             "time": player.currentTime,
             "duration": player.duration,
         ]
+        if let bpm = player.currentTrack?.bpm { snap["bpm"] = bpm }
+        if let key = player.currentTrack?.key { snap["key"] = key }
+        return snap
     }
 
     @MainActor
