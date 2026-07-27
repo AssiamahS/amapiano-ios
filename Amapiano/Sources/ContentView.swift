@@ -30,11 +30,14 @@ struct ContentView: View {
     }
 
     func smartConnect() async {
-        // Try all known URLs quickly
+        // Try all known routes quickly. Hostnames, not raw IPs: the ts.net
+        // name carries the ATS exception (a bare 100.x tailscale IP is
+        // blocked — CGNAT isn't "local network" to ATS) and .local rides
+        // NSAllowsLocalNetworking however the LAN renumbers.
         let urls = [
             UserDefaults.standard.string(forKey: "serverURL") ?? "",
-            "http://100.97.199.99:8766",  // Tailscale
-            "http://192.168.1.162:8766",   // Local WiFi
+            "http://saints-macbook-air.tail40af16.ts.net:8766",
+            "http://Saints-MacBook-Air-170.local:8766",
         ].filter { !$0.isEmpty }
 
         for url in urls {
