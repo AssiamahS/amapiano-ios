@@ -1,4 +1,5 @@
 import SwiftUI
+import WatchKit
 
 // MARK: - Now Playing (scrub with the crown, like Spotify's watch app)
 
@@ -59,13 +60,22 @@ struct NowPlayingView: View {
         .digitalCrownRotation($crownTime, from: 0, through: max(duration, 1), by: max(duration / 60, 1),
                               sensitivity: .medium, isContinuous: false, isHapticFeedbackEnabled: true)
         .onChange(of: crownTime) { _, newValue in
+            // Ignore programmatic syncs (apply() sets crownTime = time every poll);
+            // only a real crown turn moves crownTime away from the known position.
+            guard abs(newValue - time) > 1.0 else { return }
             scrubbing = true
             scrubTask?.cancel()
             scrubTask = Task {
                 try? await Task.sleep(nanoseconds: 400_000_000)
                 guard !Task.isCancelled else { return }
-                _ = try? await session.request(["action": "seek", "t": newValue])
-                scrubbing = false
+                if let reply = try? await session.request(["action": "seek", "t": newValue]) {
+                    time = newValue
+                    scrubbing = false
+                    apply(reply)
+                } else {
+                    time = newValue
+                    scrubbing = false
+                }
             }
         }
         .onReceive(poll) { _ in refresh() }
@@ -119,12 +129,25 @@ struct WatchCrate: Identifiable {
 struct CratesView: View {
     @State private var crates: [WatchCrate] = []
     @State private var errorLine: String?
+    @State private var loading = false
 
     var body: some View {
         NavigationStack {
             List {
-                if let errorLine {
-                    Text(errorLine).font(.footnote).foregroundStyle(.secondary)
+                if loading && crates.isEmpty {
+                    HStack {
+                        Spacer()
+                        ProgressView()
+                        Spacer()
+                    }
+                } else if let errorLine {
+                    Button {
+                        Task { await load() }
+                    } label: {
+                        Label(errorLine, systemImage: "arrow.clockwise")
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                    }
                 }
                 ForEach(crates) { crate in
                     NavigationLink {
@@ -151,15 +174,17 @@ struct CratesView: View {
     }
 
     private func load() async {
+        loading = true
+        defer { loading = false }
         do {
             let json = try await WatchSession.shared.api("GET", "/api/serato/crates") as? [String: Any]
             let list = json?["crates"] as? [[String: Any]] ?? []
             crates = list.filter { ($0["source"] as? String) != "backup" }.map {
                 WatchCrate(name: $0["name"] as? String ?? "", count: $0["count"] as? Int ?? 0)
             }
-            errorLine = crates.isEmpty ? "No crates yet" : nil
+            errorLine = crates.isEmpty ? "No crates yet — tap to reload" : nil
         } catch {
-            errorLine = "Phone unreachable"
+            errorLine = "Phone unreachable — tap to retry"
         }
     }
 }
@@ -173,18 +198,39 @@ struct WatchCrateDetailView: View {
     @State private var showRename = false
     @State private var newName = ""
     @State private var editingTrack: EditableSong?
+    @State private var playingTrackId: String?
+    @State private var loadError = false
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
         List {
+            if loadError {
+                Button {
+                    loadError = false
+                    Task { await load() }
+                } label: {
+                    Label("Couldn't load — tap to retry", systemImage: "arrow.clockwise")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                }
+            }
             ForEach(Array(tracks.enumerated()), id: \.element.id) { i, track in
                 Button {
+                    playingTrackId = track.id
+                    WKInterfaceDevice.current().play(.start)
                     Task { _ = try? await WatchSession.shared.request(
-                        ["action": "playCrate", "name": crate.name, "index": i]) }
+                        ["action": "playCrate", "name": crate.name, "index": i, "trackId": track.id]) }
                 } label: {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(track.title).font(.footnote).lineLimit(1)
-                        Text(track.artist).font(.caption2).foregroundStyle(.secondary).lineLimit(1)
+                    HStack(spacing: 6) {
+                        if playingTrackId == track.id {
+                            Image(systemName: "speaker.wave.2.fill")
+                                .font(.caption2)
+                                .foregroundStyle(.orange)
+                        }
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(track.title).font(.footnote).lineLimit(1)
+                            Text(track.artist).font(.caption2).foregroundStyle(.secondary).lineLimit(1)
+                        }
                     }
                 }
                 .contextMenu {
@@ -239,11 +285,13 @@ struct WatchCrateDetailView: View {
             }
         }
         .sheet(isPresented: $showRename) {
-            VStack {
+            VStack(spacing: 10) {
                 TextField("Crate name", text: $newName)
                 Button("Save") {
                     Task {
-                        let full = crate.parent.map { "\($0) > \(newName)" } ?? newName
+                        let trimmed = newName.trimmingCharacters(in: .whitespaces)
+                        guard !trimmed.isEmpty else { return }
+                        let full = crate.parent.map { "\($0) > \(trimmed)" } ?? trimmed
                         _ = try? await WatchSession.shared.api(
                             "POST", "/api/serato/crates/\(encoded)/rename", body: ["name": full])
                         showRename = false
@@ -251,6 +299,10 @@ struct WatchCrateDetailView: View {
                         onChanged()
                     }
                 }
+                .buttonStyle(.borderedProminent)
+                .tint(.orange)
+                .disabled(newName.trimmingCharacters(in: .whitespaces).isEmpty)
+                Button("Cancel", role: .cancel) { showRename = false }
             }
         }
     }
@@ -266,7 +318,11 @@ struct WatchCrateDetailView: View {
 
     private func load() async {
         guard let json = try? await WatchSession.shared.api(
-            "GET", "/api/serato/crates/\(encoded)/tracks") as? [String: Any] else { return }
+            "GET", "/api/serato/crates/\(encoded)/tracks") as? [String: Any] else {
+            loadError = tracks.isEmpty
+            return
+        }
+        loadError = false
         let list = json["tracks"] as? [[String: Any]] ?? []
         tracks = list.map {
             (id: $0["id"] as? String ?? "",

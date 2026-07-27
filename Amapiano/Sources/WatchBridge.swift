@@ -43,7 +43,8 @@ final class WatchBridge: NSObject, WCSessionDelegate {
                 replyHandler(self.stateSnapshot())
             case "playCrate":
                 await self.playCrate(name: message["name"] as? String ?? "",
-                                     index: message["index"] as? Int ?? 0)
+                                     index: message["index"] as? Int ?? 0,
+                                     trackId: message["trackId"] as? String)
                 replyHandler(self.stateSnapshot())
             case "api":
                 let reply = await self.proxy(message)
@@ -67,11 +68,15 @@ final class WatchBridge: NSObject, WCSessionDelegate {
     }
 
     @MainActor
-    private func playCrate(name: String, index: Int) async {
+    private func playCrate(name: String, index: Int, trackId: String? = nil) async {
         guard let player, !name.isEmpty else { return }
         guard let tracks = try? await APIClient.shared.fetchCrateTracks(name: name),
-              tracks.indices.contains(index) else { return }
-        player.play(track: tracks[index], from: tracks)
+              !tracks.isEmpty else { return }
+        // Prefer the id the watch tapped — the index can be stale if the crate
+        // changed since the watch last loaded it.
+        let resolved = trackId.flatMap { id in tracks.firstIndex(where: { $0.id == id }) }
+            ?? min(index, tracks.count - 1)
+        player.play(track: tracks[resolved], from: tracks)
     }
 
     /// Forward a raw API call from the watch to the amapiano server.
