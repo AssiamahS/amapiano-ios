@@ -9,6 +9,7 @@ struct AmapianoApp: App {
             ContentView()
                 .environmentObject(player)
                 .preferredColorScheme(.dark)
+                .onAppear { WatchBridge.shared.activate(player: player) }
         }
     }
 }
