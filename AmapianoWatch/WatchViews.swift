@@ -191,6 +191,7 @@ struct UpNextView: View {
                 }
             }
             .navigationTitle("Up Next")
+            .nowPlayingShortcut()
             .task { await load() }
         }
     }
@@ -231,6 +232,7 @@ struct WatchLibraryView: View {
                 }
             }
             .navigationTitle("Library")
+            .nowPlayingShortcut()
             .navigationDestination(for: String.self) { genre in
                 WatchGenreTracksView(genre: genre)
             }
@@ -283,6 +285,7 @@ struct WatchGenreTracksView: View {
             }
         }
         .navigationTitle(genre.isEmpty ? "All Music" : genre)
+        .nowPlayingShortcut()
         .task { await load(offset: 0) }
     }
 
@@ -333,6 +336,7 @@ struct WatchSearchView: View {
                 }
             }
             .navigationTitle("Search")
+            .nowPlayingShortcut()
         }
     }
 
@@ -411,6 +415,7 @@ struct CratesView: View {
                 }
             }
             .navigationTitle("Crates")
+            .nowPlayingShortcut()
             .navigationDestination(item: $selected) { crate in
                 WatchCrateDetailView(crate: crate, allCrates: crates, onChanged: { Task { await load() } })
             }
@@ -512,6 +517,7 @@ struct WatchCrateDetailView: View {
             }
         }
         .navigationTitle(crate.leafName)
+        .nowPlayingShortcut()
         .task { await load() }
         .sheet(item: $editingTrack) { song in
             WatchSongEditView(song: song) {
