@@ -198,6 +198,18 @@ class PlayerViewModel: ObservableObject {
         currentTime = time
     }
 
+    /// Upcoming tracks after the current one, for the watch's Up Next page.
+    var upNext: [Track] {
+        guard currentIndex >= 0, currentIndex + 1 < queue.count else { return [] }
+        return Array(queue[(currentIndex + 1)...].prefix(20))
+    }
+
+    func jump(toQueueId id: String) {
+        guard let idx = queue.firstIndex(where: { $0.id == id }) else { return }
+        currentIndex = idx
+        play(track: queue[idx])
+    }
+
     func toggleShuffle() {
         isShuffled.toggle()
         if isShuffled, let current = currentTrack {

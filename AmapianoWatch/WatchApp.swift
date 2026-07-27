@@ -13,7 +13,9 @@ struct RootView: View {
     var body: some View {
         TabView {
             NowPlayingView()
+            UpNextView()
             CratesView()
+            WatchSearchView()
         }
         .tabViewStyle(.verticalPage)
     }

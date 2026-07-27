@@ -46,6 +46,18 @@ final class WatchBridge: NSObject, WCSessionDelegate {
                                      index: message["index"] as? Int ?? 0,
                                      trackId: message["trackId"] as? String)
                 replyHandler(self.stateSnapshot())
+            case "queue":
+                let next = (self.player?.upNext ?? []).map {
+                    ["id": $0.id, "title": $0.title, "artist": $0.artist]
+                }
+                replyHandler(["tracks": next])
+            case "jumpQueue":
+                if let id = message["trackId"] as? String { self.player?.jump(toQueueId: id) }
+                replyHandler(self.stateSnapshot())
+            case "playSearch":
+                await self.playSearch(query: message["query"] as? String ?? "",
+                                      trackId: message["trackId"] as? String ?? "")
+                replyHandler(self.stateSnapshot())
             case "api":
                 let reply = await self.proxy(message)
                 replyHandler(reply)
@@ -77,6 +89,14 @@ final class WatchBridge: NSObject, WCSessionDelegate {
         let resolved = trackId.flatMap { id in tracks.firstIndex(where: { $0.id == id }) }
             ?? min(index, tracks.count - 1)
         player.play(track: tracks[resolved], from: tracks)
+    }
+
+    @MainActor
+    private func playSearch(query: String, trackId: String) async {
+        guard let player, !trackId.isEmpty else { return }
+        guard let tracks = try? await APIClient.shared.fetchTracks(query: query.isEmpty ? nil : query),
+              let track = tracks.first(where: { $0.id == trackId }) else { return }
+        player.play(track: track, from: tracks)
     }
 
     /// Forward a raw API call from the watch to the amapiano server.

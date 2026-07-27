@@ -80,7 +80,14 @@ struct NowPlayingView: View {
         }
         .onReceive(poll) { _ in refresh() }
         .onAppear { refresh() }
+        .onChange(of: scenePhase) { _, phase in
+            // Polls stop while the wrist is down; catch up the instant we wake
+            // so the displayed song/time matches what the phone is playing.
+            if phase == .active { refresh() }
+        }
     }
+
+    @Environment(\.scenePhase) private var scenePhase
 
     @State private var scrubTask: Task<Void, Never>?
 
@@ -110,6 +117,108 @@ struct NowPlayingView: View {
     private func fmt(_ t: Double) -> String {
         let s = max(0, Int(t.isFinite ? t : 0))
         return String(format: "%d:%02d", s / 60, s % 60)
+    }
+}
+
+// MARK: - Up Next (the phone's play queue after the current song)
+
+struct UpNextView: View {
+    @State private var tracks: [(id: String, title: String, artist: String)] = []
+    @State private var loaded = false
+
+    var body: some View {
+        NavigationStack {
+            List {
+                if tracks.isEmpty {
+                    Text(loaded ? "Queue is empty — play a crate" : "Loading…")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                }
+                ForEach(tracks, id: \.id) { track in
+                    Button {
+                        WKInterfaceDevice.current().play(.start)
+                        Task {
+                            _ = try? await WatchSession.shared.request(
+                                ["action": "jumpQueue", "trackId": track.id])
+                            await load()
+                        }
+                    } label: {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(track.title).font(.footnote).lineLimit(1)
+                            Text(track.artist).font(.caption2).foregroundStyle(.secondary).lineLimit(1)
+                        }
+                    }
+                }
+            }
+            .navigationTitle("Up Next")
+            .task { await load() }
+        }
+    }
+
+    private func load() async {
+        guard let reply = try? await WatchSession.shared.request(["action": "queue"]) else { return }
+        let list = reply["tracks"] as? [[String: Any]] ?? []
+        tracks = list.map {
+            (id: $0["id"] as? String ?? "",
+             title: $0["title"] as? String ?? "?",
+             artist: $0["artist"] as? String ?? "")
+        }
+        loaded = true
+    }
+}
+
+// MARK: - Search (dictate or swipe-type, results play with the full result list as queue)
+
+struct WatchSearchView: View {
+    @State private var query = ""
+    @State private var results: [(id: String, title: String, artist: String)] = []
+    @State private var searching = false
+    @State private var searched = false
+
+    var body: some View {
+        NavigationStack {
+            List {
+                TextField("Song or artist", text: $query)
+                    .onSubmit { Task { await search() } }
+                if searching {
+                    HStack { Spacer(); ProgressView(); Spacer() }
+                } else if searched && results.isEmpty {
+                    Text("No matches").font(.footnote).foregroundStyle(.secondary)
+                }
+                ForEach(results, id: \.id) { track in
+                    Button {
+                        WKInterfaceDevice.current().play(.start)
+                        Task { _ = try? await WatchSession.shared.request(
+                            ["action": "playSearch", "query": query, "trackId": track.id]) }
+                    } label: {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(track.title).font(.footnote).lineLimit(1)
+                            Text(track.artist).font(.caption2).foregroundStyle(.secondary).lineLimit(1)
+                        }
+                    }
+                }
+            }
+            .navigationTitle("Search")
+        }
+    }
+
+    private func search() async {
+        let q = query.trimmingCharacters(in: .whitespaces)
+        guard !q.isEmpty else { return }
+        searching = true
+        defer { searching = false; searched = true }
+        let encoded = q.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? q
+        guard let json = try? await WatchSession.shared.api(
+            "GET", "/api/tracks?q=\(encoded)") as? [String: Any] else {
+            results = []
+            return
+        }
+        let list = json["tracks"] as? [[String: Any]] ?? []
+        results = list.map {
+            (id: $0["id"] as? String ?? "",
+             title: $0["title"] as? String ?? "?",
+             artist: $0["artist"] as? String ?? "")
+        }
     }
 }
 
