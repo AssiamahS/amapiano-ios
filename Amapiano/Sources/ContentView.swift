@@ -186,6 +186,7 @@ struct MainTabView: View {
                 case 0: TracksView()
                 case 1: PlaylistsView()
                 case 2: DownloadsView()
+                case 3: SanitizeView()
                 default: TracksView()
                 }
             }
@@ -209,6 +210,7 @@ struct CustomTabBar: View {
             tabButton(icon: "music.note.list", label: "Tracks", tag: 0)
             tabButton(icon: "square.stack", label: "Playlists", tag: 1)
             tabButton(icon: "arrow.down.circle", label: "Downloads", tag: 2)
+            tabButton(icon: "sparkles", label: "Sanitize", tag: 3)
         }
         .padding(.horizontal, 32)
         .padding(.top, 8)

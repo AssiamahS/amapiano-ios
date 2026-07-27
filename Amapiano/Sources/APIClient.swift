@@ -220,6 +220,42 @@ class APIClient {
         _ = try await localSession.data(for: req)
     }
 
+    // MARK: - sanitize
+
+    func sanitizeReport() async throws -> SanitizeReport {
+        guard let url = url("/api/sanitize/report") else { throw URLError(.badURL) }
+        // report walks the whole library — give it longer than the default 10s
+        let (data, _) = try await URLSession.shared.data(from: url)
+        return try JSONDecoder().decode(SanitizeReport.self, from: data)
+    }
+
+    func sanitizeReplace(id: String) async throws {
+        guard let url = url("/api/sanitize/replace/\(id)") else { throw URLError(.badURL) }
+        var req = URLRequest(url: url, timeoutInterval: 300)
+        req.httpMethod = "POST"
+        let (_, resp) = try await URLSession.shared.data(for: req)
+        guard (resp as? HTTPURLResponse)?.statusCode == 200 else {
+            throw URLError(.badServerResponse)
+        }
+    }
+
+    func sanitizeFixAll(classes: [String] = ["music_video", "live", "short_preview"]) async throws -> String {
+        guard let url = url("/api/sanitize/fix") else { throw URLError(.badURL) }
+        var req = URLRequest(url: url)
+        req.httpMethod = "POST"
+        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        req.httpBody = try JSONSerialization.data(withJSONObject: ["classes": classes])
+        let (data, _) = try await URLSession.shared.data(for: req)
+        struct Resp: Decodable { let job_id: String }
+        return try JSONDecoder().decode(Resp.self, from: data).job_id
+    }
+
+    func sanitizeJob(id: String) async throws -> SanitizeJob {
+        guard let url = url("/api/sanitize/jobs/\(id)") else { throw URLError(.badURL) }
+        let (data, _) = try await localSession.data(from: url)
+        return try JSONDecoder().decode(SanitizeJob.self, from: data)
+    }
+
     func createCrate(name: String) async throws {
         guard let url = url("/api/serato/crates/create") else { return }
         var req = URLRequest(url: url)
