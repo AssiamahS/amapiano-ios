@@ -1,3 +1,5 @@
+**Install:** open [assiamahs.github.io/amapiano-ios/install.html](https://assiamahs.github.io/amapiano-ios/install.html) in Safari on your iPhone.
+
 '''plaintext'''
 
 ▗ ▗   ▖ ▖  Claude Code v2.1.90
